@@ -1,0 +1,4 @@
+Launch skill by saying  " Alexa, Launch Trans Info"
+get route information by saying " Alexa ask trans info to get routes"
+get stops info by saying  " Alexa ask trans info to get stops"
+get departures info by saying " Alexa ask trans info to get departures"
