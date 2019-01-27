@@ -1,0 +1,1 @@
+[{"route_type": 0, "route_id": 1, "route_name": "Alamein", "route_number": "", "disruption_ids": [], "stop_name": "Alamein Station", "stop_id": 1002, "stop_latitude": -37.8683167, "stop_longitude": 145.079666}]
