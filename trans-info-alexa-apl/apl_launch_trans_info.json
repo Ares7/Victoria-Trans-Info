@@ -136,7 +136,17 @@
 				],
 				"item": [
 					{
-						"type": "Container",
+						"type":"TouchWrapper",
+						"onPress":{
+                        	       "type":"SendEvent",
+                                	"arguments": [
+										"ModeList",
+										"${ordinal}"
+									    ,"${primaryText}"
+									]
+                                },
+						"item":{
+                        "type": "Container",
 						"height": "100vh",
 						"width": "100vw",
 						"alignItems": "center",
@@ -172,13 +182,24 @@
 								"spacing": "5dp"
 							}
 						]
-					}
+					}}
 				]
 			},
 			"HorizontalListItem": {
 				"item": [
 					{
-						"type": "Container",
+
+						"type":"TouchWrapper",
+						"onPress":{
+                        	       "type":"SendEvent",
+                                	"arguments": [
+										"ModeList",
+										"${ordinal}"
+									    ,"${primaryText}"
+									]
+                                },
+						"item":{
+                        "type": "Container",
 						"maxWidth": 528,
 						"minWidth": 312,
 						"paddingLeft": 16,
@@ -203,7 +224,7 @@
 								"spacing": 4
 							}
 						]
-					}
+					}}
 				]
 			},
 			"ListTemplate2": {
@@ -297,12 +318,12 @@
 				"largeSourceUrl": null,
 				"sources": [
 					{
-						"url": "https://d2o906d8ln7ui1.cloudfront.net/images/LT2_Background.png",
+						"url": "https://s3.amazonaws.com/aws-apl-contest/transInfo/background/trans-info-background-1.jpeg",
 						"size": "small",
 						"widthPixels": 0,
 						"heightPixels": 0
 					}, {
-						"url": "https://d2o906d8ln7ui1.cloudfront.net/images/LT2_Background.png",
+						"url": "https://s3.amazonaws.com/aws-apl-contest/transInfo/background/trans-info-background-1.jpeg",
 						"size": "large",
 						"widthPixels": 0,
 						"heightPixels": 0
@@ -350,7 +371,7 @@
 								}
 							]
 						},
-						"token": "brie"
+						"token": "Train"
 					}, {
 						"listItemIdentifier": "Bus",
 						"ordinalNumber": 2,
@@ -434,12 +455,12 @@
 							"largeSourceUrl": null,
 							"sources": [
 								{
-									"url": "https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/vline.png",
+									"url": "https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/nightbus_hi_res_512.png",
 									"size": "small",
 									"widthPixels": 0,
 									"heightPixels": 0
 								}, {
-									"url": "https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/vline.png",
+									"url": "https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/nightbus_hi_res_512.png",
 									"size": "large",
 									"widthPixels": 0,
 									"heightPixels": 0
@@ -466,7 +487,7 @@
 							"largeSourceUrl": null,
 							"sources": [
 								{
-									"url": "https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/nightbus_hi_res_512.png",
+									"url": "https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/vline.png",
 									"size": "small",
 									"widthPixels": 0,
 									"heightPixels": 0

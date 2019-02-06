@@ -226,6 +226,7 @@
                             "width": "100%",
                             "separator": true,
                             "alignItems": "center",
+                            "paddingBottom": "100dp",
                             "items": [
                                 {
                                     "type": "Text",
@@ -256,25 +257,7 @@
                                             "grow": 1,
                                             "shrink": 1,
                                             "fontWeight": "300",
-                                            "maxLines": 1
-                                        },
-                                        {
-                                            "type": "Text",
-                                            "text": "${secondaryText}",
-                                            "style": "textStyleCaption",
-                                            "fontWeight": "300",
-                                            "grow": 1,
-                                            "shrink": 1,
-                                            "maxLines": 1
-                                        },
-                                        {
-                                            "type": "Text",
-                                            "text": "${tertiaryText}",
-                                            "style": "textStyleDetails",
-                                            "fontWeight": "300",
-                                            "grow": 1,
-                                            "shrink": 1,
-                                            "maxLines": 1
+                                            "maxLines": 2
                                         }
                                     ]
                                 }
@@ -293,7 +276,7 @@
                         },
                         "item": {
                             "type": "Frame",
-                            "backgroundColor": "#404040",
+                            "backgroundColor": "",
                             "item": {
                                 "type": "Container",
                                 "direction": "row",
@@ -317,32 +300,13 @@
                                             {
                                                 "type": "Text",
                                                 "text": "${primaryText}",
-                                                "style": "textStyleBody",
+                                                "style": "textStylePrimary",
                                                 "fontWeight": "300",
                                                 "grow": 1,
                                                 "shrink": 1,
-                                                "maxLines": 1
-                                            },
-                                            {
-                                                "type": "Text",
-                                                "text": "${secondaryText}",
-                                                "style": "textStyleDetails",
-                                                "fontWeight": "300",
-                                                "grow": 1,
-                                                "shrink": 1,
-                                                "maxLines": 1
+                                                "maxLines": 2
                                             }
                                         ]
-                                    },
-                                    {
-                                        "type": "Text",
-                                        "text": "${tertiaryText}",
-                                        "style": "textStyleBody",
-                                        "fontWeight": "300",
-                                        "grow": 1,
-                                        "shrink": 1,
-                                        "textAlign": "right",
-                                        "maxLines": 1
                                     }
                                 ]
                             }
@@ -376,13 +340,13 @@
                 "largeSourceUrl": null,
                 "sources": [
                     {
-                        "url": "",
+                        "url": "https://s3.amazonaws.com/aws-apl-contest/transInfo/background/trans-info-background-1.jpeg",
                         "size": "small",
                         "widthPixels": 0,
                         "heightPixels": 0
                     },
                     {
-                        "url": "",
+                        "url": "https://s3.amazonaws.com/aws-apl-contest/transInfo/background/trans-info-background-1.jpeg",
                         "size": "large",
                         "widthPixels": 0,
                         "heightPixels": 0

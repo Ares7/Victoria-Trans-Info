@@ -6,7 +6,7 @@ from ask_sdk_core.utils import is_request_type
 from ask_sdk_model.ui import SimpleCard
 from ask_sdk_model import Response
 from ask_sdk_core.handler_input import HandlerInput
-from ask_sdk_model.interfaces.alexa.presentation.apl import  UserEvent
+from ask_sdk_model.interfaces.alexa.presentation.apl import UserEvent
 from ask_sdk_model.dialog.delegate_directive import DelegateDirective
 from ask_sdk_model.dialog.elicit_slot_directive import ElicitSlotDirective
 from ask_sdk_model.interfaces.alexa.presentation.apl import (
@@ -38,6 +38,11 @@ ptv_api_key = os.environ['PTV_API_KEY']
 ptv_dev_id = os.environ['PTV_DEV_ID']
 
 number_map = {'1':'first', '2': 'second','3':'third', '4':'fourth', '5':'and fifth'}
+mode_image_dict = {'train':'https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/train_hi_res_512.png',
+                   'bus':'https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/bus_hi_res_512.png',
+                   'tram':'https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/tramhi_res_512.png',
+                   'vline':'https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/vline.png',
+                   'night bus':'https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/nightbus_hi_res_512.png'}
 
 def getUrl(request):
     request = request + ('&' if ('?' in request) else '?')
@@ -53,14 +58,12 @@ def load_apl_document(file_path):
     with open(file_path) as f:
         return json.load(f)
 
-
 def get_all_routes():
     try:
         response = requests.get(getUrl('/v3/routes'))
         return response.json()['routes']
     except:
         print('Source: get_all_routes, error while getting all routes:')
-
 
 def get_all_sotps_of_route(route_type, route_id):
 
@@ -78,7 +81,6 @@ def get_all_sotps_of_route(route_type, route_id):
             response.status_code, route_type, route_id))
         return None
 
-
 def get_line_names():
     param = urlencode({'route_types': [0]})
     response = requests.get(getUrl('/v3/routes?' + param))
@@ -92,7 +94,6 @@ def get_line_names():
     else:
         return None
 
-
 def get_route_types() -> list:
     response = requests.get(getUrl('/v3/route_types'))
     routes_type_names = list()
@@ -104,7 +105,6 @@ def get_route_types() -> list:
         return [routes_type_names, routes_name_type_map]
     else:
         return None
-
 
 def get_stop_id_in_mode(stop_name:str, route_type:int, route_id:int) -> list:
     print('entered in get_stop_id_in_mode for stop_name = {0} route_type = {1} route_id = {2}'.format(stop_name, route_type, route_id))
@@ -123,22 +123,21 @@ def get_stop_id_in_mode(stop_name:str, route_type:int, route_id:int) -> list:
                 return [st, stop_name_ids[st]]
     return None
 
-
-def get_departures_for_stop(stop_id:int, route_type:int, route_id:int):
-    if route_id is None:
-        # dont care about route
-        api = '/v3/departures/route_type/{0}/stop/{1}'.format(route_type, stop_id)
-    else:
-        # find  route specific departures
-        api = '/v3/departures/route_type/{0}/stop/{1}/route/{2}'.format(route_type, stop_id,route_id)
-    print('finding departures for URL = '.format(api))
-    response = requests.get(getUrl(api))
-
-    if response.status_code == 200:
-        return response.json()['departures']
-    else:
-        print('Source  = get_direction_for_stop,  Error code = {0}'.format(response.status_code))
-        return None
+# def get_departures_for_stop(stop_id:int, route_type:int, route_id:int):
+#     if route_id is None:
+#         # dont care about route
+#         api = '/v3/departures/route_type/{0}/stop/{1}'.format(route_type, stop_id)
+#     else:
+#         # find  route specific departures
+#         api = '/v3/departures/route_type/{0}/stop/{1}/route/{2}'.format(route_type, stop_id,route_id)
+#     print('finding departures for URL = '.format(api))
+#     response = requests.get(getUrl(api))
+#
+#     if response.status_code == 200:
+#         return response.json()['departures']
+#     else:
+#         print('Source  = get_direction_for_stop,  Error code = {0}'.format(response.status_code))
+#         return None
 
 # get route name from route_id
 def get_route_name(route_id):
@@ -169,38 +168,124 @@ def get_direction_name(route_id, direction_id):
     return None
 
 # get 5 departures
-def get_departures(route_type, search_term):
+def get_departures_for_mode_and_stop(handler_input, route_type, search_term, apl_template):
     param_query = '/v3/search/{0}?route_types={1}&include_addresses=false&include_outlets=false&match_route_by_suburb=false&match_stop_by_gtfs_stop_id=false'.format(search_term,route_type)
     res = requests.get(getUrl(param_query)).json()
-    print(res)
+    apl_doc = load_apl_document(apl_template)['document']
+    apl_data = load_apl_document(apl_template)['dataSources']
+
     i=0
     dep_list = list()
     if res.get('stops') is not None:
-        for stop in res.get('stops'):
-            stop_id  = stop['stop_id']
-            stop_name = stop['stop_name']
-            api_query = '/v3/departures/route_type/{0}/stop/{1}'.format(route_type, stop_id)
-            res_dep = requests.get(getUrl(api_query)).json()['departures']
-            for dep in res_dep:
-                dep_platform_number = dep['platform_number']
-                dep_route_name = get_route_name(dep['route_id'])
-                route_name = dep_route_name if dep_route_name is not None else "Not Available"
-                dep_direction_id = get_direction_name(dep['route_id'], dep['direction_id'])
-                dep_direction_id = dep['direction_id'] if dep_direction_id is None else dep_direction_id
+        stop_id  = res['stops'][0]['stop_id']
+        stop_name =  res['stops'][0]['stop_name']
+        api_query = '/v3/departures/route_type/{0}/stop/{1}'.format(route_type, stop_id)
+        res_dep = requests.get(getUrl(api_query)).json()['departures']
+        for dep in res_dep:
+            dep_platform_number = dep['platform_number']
+            dep_route_name = get_route_name(dep['route_id'])
+            route_name = dep_route_name if dep_route_name is not None else "Not Available"
+            dep_direction_id = get_direction_name(dep['route_id'], dep['direction_id'])
+            dep_direction_id = dep['direction_id'] if dep_direction_id is None else dep_direction_id
+            i = i + 1
+            dep_list.append({
+                'stop_name':stop_name,
+                'route_name': route_name,
+                'direction': dep_direction_id,
+                'scheduled_departure_utc': dep['scheduled_departure_utc'],
+                'platform_number': dep_platform_number
+            })
+            print(i)
+            if i == 5:
+                break
+        if len(dep_list)>0:
+            if mode_image_dict.get(route_type.lower()) is not None:
+                apl_data['bodyTemplate2Data']['image']  = mode_image_dict.get(route_type.lower())
+            apl_data['bodyTemplate2Data']['textContent']['title']['text'] = stop_name
+            apl_data['bodyTemplate2Data']['textContent']['subtitle']['text'] = 'Mode: {0}'.format(route_type)
+            apl_data['bodyTemplate2Data']['textContent']['primaryText']['text'] = 'Mode: {0}'.format(route_type)
+            speech_text = 'At stop {0}, next {1} departures are  '.format(stop_name, len(dep_list))
+            speech = list()
+            display_text = list()
+            for i in range(len(dep_list)):
+                time = dep_list[i]['scheduled_departure_utc'].split('T')[1].replace('Z', '') + ' UTC'
+                rt = dep_list[i]['route_name']
+                dr = dep_list[i]['direction']
+                pt = dep_list[i]['platform_number']
+                speech.append('At {0} for route {1} in direction {2} at platform number {3} '.format(time, rt,dr ,pt))
+                display_text.append('Time: {0} \n Route: {1}  Direction:  {2}\nPlatform: {3}'.format(time,rt,dr, pt ))
+
+            speech_text = speech_text + ", ".join(speech)
+            apl_data['bodyTemplate2Data']['textContent']['primaryText']['text'] = "\n\n".join(display_text)
+            handler_input.response_builder.speak(speech_text).set_should_end_session(
+                True).add_directive(
+                RenderDocumentDirective(
+                    token="GetDepartures",
+                    document=apl_doc,
+                    datasources=apl_data
+                )
+            )
+    else:
+        speech_text = "Sorry I could not find the information for {0}. Please try again".format(search_term)
+        handler_input.response_builder.speak(speech_text).set_should_end_session(True)
+
+    return handler_input
+
+def fill_routes(handler_input, mode_value):
+    handler_input.attributes_manager.session_attributes['current_mode'] = mode_value
+    if 'mode_name_type_map' in handler_input.attributes_manager.session_attributes:
+        mode_name_type_map = handler_input.attributes_manager.session_attributes['mode_name_type_map']
+    else:
+
+        mode_name_type_map = get_route_types()[1]
+
+    handler_input.attributes_manager.session_attributes['mode_name_type_map'] = mode_name_type_map
+    all_routes = list()
+    current_route_names_list = list()
+    routes_name_id_map = dict()
+    if mode_name_type_map.get(str.lower(mode_value)) is not None:
+        all_routes = get_all_routes()
+        route_type = mode_name_type_map.get(str.lower(mode_value))
+        list_doc = load_apl_document('apl_route_list.json')
+        data_source = list_doc['dataSources']
+        data_source['listTemplate1Metadata']['title'] = "Route List for {0}".format(mode_value)
+        route_list = list()
+        for item in all_routes:
+
+            if item['route_type'] == route_type:
+                current_route_names_list.append(item['route_name'])
+                routes_name_id_map[item['route_name']] = item['route_id']
+        # remember current routes id name map for the session
+        # handler_input.attributes_manager.session_attributes['routes_name_id_map'] = routes_name_id_map
+
+        i = 0
+        speech_text_temp = ""
+        for item in current_route_names_list:
+            if i < 20:
+                route_list_item = copy.deepcopy(load_apl_document('apl_route_list_item_template.json'))
+                route_list_item['ordinalNumber'] = i + 1
+                route_list_item['textContent']['primaryText']['text'] = item
+                route_list_item['listItemIdentifier'] = item
+                route_list_item['token'] = mode_value
+                route_list.append(route_list_item)
+                if i == 0:
+                    speech_text_temp = item.replace("&", "and")
+                else:
+                    speech_text_temp = speech_text_temp + ",  " + item.replace("&", "and")
                 i = i + 1
-                dep_list.append({
-                    'stop_name':stop_name,
-                    'route_name': route_name,
-                    'direction': dep_direction_id,
-                    'scheduled_departure_utc': dep['scheduled_departure_utc'],
-                    'platform_number': dep_platform_number
-                })
-                print(i)
-                if i == 4:
-                    return dep_list
 
+        data_source['listTemplate1ListData']['listPage']['listItems'] = route_list
 
-    return dep_list
+        speech_text = 'Total {0} routes available for {1} and some of these are {2} '.format(
+            len(current_route_names_list), mode_value, speech_text_temp)
+
+        handler_input.response_builder.speak(speech_text).ask(speech_text).add_directive(
+            RenderDocumentDirective(
+                token="FIndRoutes",
+                document=list_doc['document'],
+                datasources=data_source))
+
+    return
 
 @sb.request_handler(can_handle_func=is_request_type("Alexa.Presentation.APL.UserEvent"))
 def alexa_user_event_request_handler(handler_input: HandlerInput):
@@ -211,17 +296,14 @@ def alexa_user_event_request_handler(handler_input: HandlerInput):
     item_selected = arguments[0]
     item_ordinal =  arguments[1]
     item_title = arguments[2]
-    if item_selected == 'RouteListItem':
-        data_source = load_apl_document('apl_route_list.json')['dataSources']
-        list_template = load_apl_document('apl_route_list_item_template.json')
-
-
+    if item_selected == 'ModeList':
+        fill_routes(handler_input, item_title)
 
     return handler_input.response_builder.response
 
 @sb.request_handler(can_handle_func=is_request_type("LaunchRequest"))
 def launch_request_handler(handler_input):
-    speech_text = "Welcome to Trans Info. You can ask about train line , stopes and departures!"
+    speech_text = "Welcome, ask Victoria Trans Info about routes, stops and departures!. You can say get train departures"
     #get_all_routes( handler_input.attributes_manager.session_attributes)
     handler_input.response_builder.speak(speech_text).set_should_end_session(
          False).add_directive(
@@ -231,7 +313,6 @@ def launch_request_handler(handler_input):
                 datasources = load_apl_document("apl_launch_trans_info.json")['dataSources'])
             )
     return handler_input.response_builder.response
-
 
 @sb.request_handler(can_handle_func=is_intent_name("GetModeIntent"))
 def get_modes_request_handler(handler_input):
@@ -255,7 +336,6 @@ def get_modes_request_handler(handler_input):
         speech_text = "Sorry there is problem in finding the data. Please try again"
         handler_input.response_builder.speak(speech_text).set_should_end_session(False)
     return handler_input.response_builder.response
-
 
 @sb.request_handler(can_handle_func=is_intent_name("GetLinesIntent"))
 def get_line_request_handler(handler_input):
@@ -347,7 +427,6 @@ def get_lines_stops_intent_handler(handler_input):
         )
         return handler_input.response_builder.response
 
-
 @sb.request_handler(can_handle_func=is_intent_name("GetRoutesIntent"))
 def get_routes_intent_handler(handler_input):
 
@@ -373,49 +452,9 @@ def get_routes_intent_handler(handler_input):
     else:
         print(str.format("Getting routes for mode = {0}", mode_value ))
         # remember current mode entered by user
-        handler_input.attributes_manager.session_attributes['current_mode'] = mode_value
-        if 'mode_name_type_map' in handler_input.attributes_manager.session_attributes:
-            mode_name_type_map = handler_input.attributes_manager.session_attributes['mode_name_type_map']
-        else:
+        fill_routes(handler_input, mode_value)
 
-            mode_name_type_map = get_route_types()[1]
-
-        handler_input.attributes_manager.session_attributes['mode_name_type_map'] = mode_name_type_map
-        all_routes = list()
-        current_route_names_list = list()
-        routes_name_id_map = dict()
-        if mode_name_type_map.get(str.lower(mode_value)) is not None:
-            all_routes = get_all_routes()
-            route_type = mode_name_type_map.get(str.lower(mode_value))
-            for item in all_routes:
-                if item['route_type'] == route_type:
-                    current_route_names_list.append(item['route_name'])
-                    routes_name_id_map[item['route_name']] = item['route_id']
-            # remember current routes id name map for the session
-            # handler_input.attributes_manager.session_attributes['routes_name_id_map'] = routes_name_id_map
-
-            i = 0
-            speech_text_temp = ""
-            for item in current_route_names_list:
-                if i < 20:
-                    if i == 0:
-                        speech_text_temp = item.replace("&", "and")
-                    else:
-                        speech_text_temp = speech_text_temp + ",  "  + item.replace("&", "and")
-                    i = i + 1
-
-
-            speech_text = 'Total {0} routes available for {1} and some of these are {2} '.format(
-                len(current_route_names_list), mode_value, speech_text_temp)
-
-
-        print(mode_value)
-        print('current_route_names_list', current_route_names_list)
-        print('speech text = ' + speech_text)
-
-        handler_input.response_builder.speak(speech_text).ask(speech_text)
         return handler_input.response_builder.response
-
 
 @sb.request_handler(can_handle_func=is_intent_name("GetRouteStops"))
 def get_routes_stops_intent_handler(handler_input):
@@ -517,81 +556,19 @@ def help_intent_handler(handler_input):
         mode_value = slots['mode'].value
     else:
         mode_value = None
-    if 'route' in slots:
-        print('route = {0}'.format(slots['route'].value))
-        route_value = slots['route'].value
-        route_value = None
+
     if 'stop' in slots:
         print('stop = {0}'.format(slots['stop'].value))
         stop_value = slots['stop'].value
     else:
         stop_value = None
-    if 'direction' in slots:
-        print('direction = {0}'.format(slots['direction'].value))
-        direction_value = slots['direction'].value
-    else:
-        direction_value = None
 
-    if dialogstate.value != "COMPLETED" and (mode_value is None or route_value is None):
+    if dialogstate.value != "COMPLETED" and (mode_value is None or stop_value is None):
         handler_input.response_builder.set_should_end_session(False)
         handler_input.response_builder.add_directive(DelegateDirective(updated_intent=intent_request))
         return handler_input.response_builder.response
     else:
-        if 'mode_name_type_map' in handler_input.attributes_manager.session_attributes:
-            mode_name_type_map = handler_input.attributes_manager.session_attributes['mode_name_type_map']
-        else:
-            mode_name_type_map = get_route_types()[1]
-            handler_input.attributes_manager.session_attributes['mode_name_type_map'] = mode_name_type_map
-
-
-        stop_id = int()
-        stop_name_full = str()
-        match_route_id = None
-        route_type = int()
-        if mode_name_type_map.get(mode_value) is not None:
-            all_routes = get_all_routes()
-            route_type = mode_name_type_map.get(str.lower(mode_value))
-            # match stop name in all routes
-            if route_value is None:
-                for rt in all_routes:
-                    if rt['route_type'] == route_type:
-                        stops_id_name_pair = get_stop_id_in_mode(stop_value, route_type, rt['route_id'])
-                        if stops_id_name_pair is not None:
-                            # got the matching stop name
-                            stop_name_full = stops_id_name_pair[0]
-                            stop_id = stops_id_name_pair[1]
-                            # do not update value of match_route_id  keep it None
-                            print('calling break')
-                            break
-
-            else:
-                for rt in all_routes:
-                    if route_value in rt['route_name'] and rt['route_type'] == route_type:
-                        stops_id_name_pair = get_stop_id_in_mode(stop_value, route_type, rt['route_id'])
-                        print('got values form get_stop_id_in_mode {0}'.format(stops_id_name_pair))
-                        if stops_id_name_pair is not None:
-                            # got the matching stop name
-                            stop_name_full = stops_id_name_pair[0]
-                            stop_id = stops_id_name_pair[1]
-                            match_route_id = rt['route_id']
-                            print('calling break')
-                            break
-
-            departures = get_departures_for_stop(stop_id, route_type, match_route_id)
-            if departures is not None:
-                print('found {0} departures for mode = {1} route = {2} stop = {3}'.format(
-                    len(departures, mode_value, route_value, stop_name_full)))
-                # prepare output
-                result_items = list()
-                for i in range(len(departures)):
-                    if i < 5:
-                        result_items.append(str.format('{0} Departure is at {1} for route {2}', number_map[str(i + 1)],
-                                             departures[i]['scheduled_departure_utc'], departures[i]['route_id']))
-
-                speech_text = "Departures for the stop {0} are as following {1}. ".format(stop_name_full, ", ".join(result_items))
-                print(speech_text)
-
-        handler_input.response_builder.speak(speech_text)
+        get_departures_for_mode_and_stop(handler_input, mode_value, stop_value, 'apl_trans_info_departures.json')
         return handler_input.response_builder.response
 
 
@@ -600,7 +577,6 @@ def help_intent_handler(handler_input):
     speech_text = "You can say hello to me!"
     handler_input.response_builder.speak(speech_text).ask(speech_text)
     return handler_input.response_builder.response
-
 
 @sb.request_handler(can_handle_func=is_intent_name("GetModesIntent"))
 def get_modes_intent_handler(handler_input):
@@ -623,8 +599,6 @@ def get_modes_intent_handler(handler_input):
         )
 
     return handler_input.response_builder.response
-
-
 
 @sb.request_handler(can_handle_func=lambda input :is_intent_name("AMAZON.CancelIntent")(input) or
         is_intent_name("AMAZON.StopIntent")(input))
@@ -651,4 +625,3 @@ def all_exception_handler(handler_input, exception):
     return handler_input.response_builder.response
 
 handler = sb.lambda_handler()
-

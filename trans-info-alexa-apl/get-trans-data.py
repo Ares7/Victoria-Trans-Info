@@ -180,7 +180,7 @@ def get_direction_name(route_id, direction_id):
     return None
 
 # get 5 departures
-def get_departures(route_type, search_term):
+def get_departures_for_mode_and_stop(route_type, search_term):
     param_query = '/v3/search/{0}?route_types={1}&include_addresses=false&include_outlets=false&match_route_by_suburb=false&match_stop_by_gtfs_stop_id=false'.format(search_term,route_type)
     res = requests.get(getUrl(param_query)).json()
     print(res)
@@ -207,13 +207,27 @@ def get_departures(route_type, search_term):
                     'platform_number': dep_platform_number
                 })
                 print(i)
-                if i == 4:
+                if i == 5:
                     return dep_list
 
 
-    return dep_list
+    return None
 
 
 search_term = 'Ashburt'
 route_type = 0
-print(get_departures(route_type, search_term))
+departure_list = get_departures_for_mode_and_stop(route_type, search_term)
+if departure_list is not None:
+    speech_text = 'At stop {0}, next {1} departures are  '.format(departure_list[0]['stop_name'], len(departure_list))
+    speech = list()
+    for i in range(len(departure_list)):
+        time = departure_list[i]['scheduled_departure_utc'].split('T')[1].replace('Z','') + ' UTC'
+        speech.append('At {0} for route {1} in direction {2} at platform number {3} '.format(
+            time, departure_list[i]['route_name'], departure_list[i]['direction'],
+            departure_list[i]['platform_number'])
+        )
+
+    speech_text = speech_text + ", ".join(speech)
+    print(speech_text)
+
+print(speech_text)
