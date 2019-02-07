@@ -280,7 +280,7 @@
                             "item": {
                                 "type": "Container",
                                 "direction": "row",
-                                "height": 125,
+                                "height": 100,
                                 "width": "95%",
                                 "alignItems": "center",
                                 "separator": true,
@@ -288,13 +288,13 @@
                                     {
                                         "type": "Text",
                                         "text": "${ordinal}",
-                                        "paddingBottom": "20dp",
-                                        "color": "white",
+                                        "paddingBottom": "10dp",
+                                        "color": "black",
                                         "spacing": "5dp"
                                     },
                                     {
                                         "type": "Container",
-                                        "spacing": 30,
+                                        "spacing": 10,
                                         "direction": "column",
                                         "items": [
                                             {
@@ -302,6 +302,7 @@
                                                 "text": "${primaryText}",
                                                 "style": "textStylePrimary",
                                                 "fontWeight": "300",
+                                                "color": "black",
                                                 "grow": 1,
                                                 "shrink": 1,
                                                 "maxLines": 2

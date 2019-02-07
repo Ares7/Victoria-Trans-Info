@@ -287,6 +287,61 @@ def fill_routes(handler_input, mode_value):
 
     return
 
+"""
+get facilities for a station based on the search query. first search for stop in Train and then search stop in
+VLine
+"""
+def get_facility_for_stop(handler_input, search_term, apl_template):
+    search_term = search_term.replace(' ', '%20')
+    param_query = '/v3/search/{0}?route_types=0&route_types=3&include_addresses=false&include_outlets=false&match_route_by_suburb=false&match_stop_by_gtfs_stop_id=false'.format(search_term)
+    res = requests.get(getUrl(param_query)).json()
+    speech_text = ""
+    apl_doc = load_apl_document(apl_template)['document']
+    apl_data = load_apl_document(apl_template)['dataSources']
+    if res.get('stops') is not None:
+        stop = res.get('stops')[0]
+        stop_id  = stop['stop_id']
+        stop_name = stop['stop_name']
+        stop_route_type = stop['route_type']
+        api_query = '/v3/stops/{0}/route_type/{1}'.format(stop_id,stop_route_type)
+        resp = requests.get(getUrl(api_query)).json()
+        resp_facility = resp['stop']
+        stop_descr = resp_facility['station_description']
+        if (stop_descr is None or stop_descr == "")== False:
+            speech_text = 'At stop {0}  {1}'.format(stop_name, stop_descr)
+            stop_amenities  = resp_facility['stop_amenities']
+            if stop_amenities is not None:
+                try:
+                    if str(stop_amenities['toilet']) in ['True', 'true']:
+                        speech_text = speech_text + 'Toilet is available'
+                    else:
+                        speech_text = speech_text + 'Toilet is  not available'
+                    if stop_amenities is not None:
+                        if str(stop_amenities['taxi_rank']) in ['True', 'true']:
+                            speech_text = speech_text + 'taxi rank is available'
+                        else:
+                            speech_text = speech_text + 'taxi rank is  not available'
+                    if stop_amenities is not None:
+                        if stop_amenities['car_parking'] is not None:
+                            speech_text = speech_text + 'car parking is {0}'.format(stop_amenities['car_parking'])
+                        else:
+                            speech_text = speech_text + 'car parking is not available'
+                except Exception as ex:
+                    print('Got error while fetching facilities for stop. {0}'.format(ex.args[0]))
+
+        else:
+            speech_text = 'Sorry, for stop {0}  information is not available. Please try later'.format(stop_name)
+
+        if speech_text == "":
+            speech_text = 'Sorry no information found for the stop'
+    else:
+        speech_text = 'Sorry no stop found for the input'
+
+    speech_text = speech_text.replace('/', ' ')
+
+    return speech_text
+
+
 @sb.request_handler(can_handle_func=is_request_type("Alexa.Presentation.APL.UserEvent"))
 def alexa_user_event_request_handler(handler_input: HandlerInput):
     # Handler for Skill Launch
@@ -303,7 +358,7 @@ def alexa_user_event_request_handler(handler_input: HandlerInput):
 
 @sb.request_handler(can_handle_func=is_request_type("LaunchRequest"))
 def launch_request_handler(handler_input):
-    speech_text = "Welcome, ask Victoria Trans Info about routes, stops and departures!. You can say get train departures"
+    speech_text = "Welcome, ask Trans Info about routes, stops and departures for Public Transport Victoria. You can say get departures"
     #get_all_routes( handler_input.attributes_manager.session_attributes)
     handler_input.response_builder.speak(speech_text).set_should_end_session(
          False).add_directive(
@@ -545,12 +600,11 @@ def get_routes_stops_intent_handler(handler_input):
         return handler_input.response_builder.response
 
 @sb.request_handler(can_handle_func=is_intent_name("GetDeparturesIntent"))
-def help_intent_handler(handler_input):
+def get_depature_intent_handler(handler_input):
     slots = handler_input.request_envelope.request.intent.slots
     dialogstate = handler_input.request_envelope.request.dialog_state
     intent_request = handler_input.request_envelope.request.intent
-    speech_text = "Sorry could not find the information you are looking. Please try again"
-    #print(str.format('mode = {0}, route = {1} stop = {2} direction = {3}', slots['mode'], slots['route'],slots['stop'],slots['direction'] ))
+
     if 'mode' in slots:
         print('mode = {0}'.format(slots['mode'].value))
         mode_value = slots['mode'].value
@@ -572,10 +626,30 @@ def help_intent_handler(handler_input):
         return handler_input.response_builder.response
 
 
+@sb.request_handler(can_handle_func=is_intent_name("FindFacilitiesIntent"))
+def find_intent_handler(handler_input):
+    slots = handler_input.request_envelope.request.intent.slots
+    dialogstate = handler_input.request_envelope.request.dialog_state
+    intent_request = handler_input.request_envelope.request.intent
+    if 'stop' in slots:
+        stop_value = slots['stop'].value
+    else:
+        stop_value = None
+
+    if dialogstate.value != "COMPLETED" and stop_value is None:
+        handler_input.response_builder.set_should_end_session(False)
+        handler_input.response_builder.add_directive(DelegateDirective(updated_intent=intent_request))
+        return handler_input.response_builder.response
+    else:
+        get_facility_for_stop(handler_input, stop_value, 'apl_stop_info.json')
+        return handler_input.response_builder.response
+
 @sb.request_handler(can_handle_func=is_intent_name("AMAZON.HelpIntent"))
 def help_intent_handler(handler_input):
-    speech_text = "You can say hello to me!"
-    handler_input.response_builder.speak(speech_text).ask(speech_text)
+    speech_text = "Trans Info provides Information about Routes, Stops and Next Departures for various mode of transports. Mode of transports" +\
+                  " are Train, Bus, Tram, Vline and Night Bus. For example you can ask get tram departures."
+
+    handler_input.response_builder.speak(speech_text).set_should_end_session(False)
     return handler_input.response_builder.response
 
 @sb.request_handler(can_handle_func=is_intent_name("GetModesIntent"))
@@ -591,7 +665,7 @@ def get_modes_intent_handler(handler_input):
         speech_text = "transport modes are train, tram, bus, vline and night bus"
 
     handler_input.response_builder.speak(speech_text).set_should_end_session(
-        False).add_directive(
+        True).add_directive(
         RenderDocumentDirective(
             token="GetModesIntent",
             document=load_apl_document("apl_launch_template.json")['document'],
@@ -605,8 +679,7 @@ def get_modes_intent_handler(handler_input):
 def cancel_and_stop_intent_handler(handler_input):
     speech_text = "Goodbye!"
 
-    handler_input.response_builder.speak(speech_text).set_card(
-        SimpleCard("Hello World", speech_text))
+    handler_input.response_builder.speak(speech_text)
     return handler_input.response_builder.response
 
 @sb.request_handler(can_handle_func=is_request_type("SessionEndedRequest"))

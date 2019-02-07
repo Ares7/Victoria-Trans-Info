@@ -181,6 +181,7 @@ def get_direction_name(route_id, direction_id):
 
 # get 5 departures
 def get_departures_for_mode_and_stop(route_type, search_term):
+    search_term = search_term.replace(' ', '%20')
     param_query = '/v3/search/{0}?route_types={1}&include_addresses=false&include_outlets=false&match_route_by_suburb=false&match_stop_by_gtfs_stop_id=false'.format(search_term,route_type)
     res = requests.get(getUrl(param_query)).json()
     print(res)
@@ -214,20 +215,81 @@ def get_departures_for_mode_and_stop(route_type, search_term):
     return None
 
 
-search_term = 'Ashburt'
+
+# get 5 departures
+def get_facility_for_stop(search_term):
+    orig_search_term = search_term
+    search_term = search_term.replace(' ', '%20')
+    param_query = '/v3/search/{0}?route_types=0&route_types=3&include_addresses=false&include_outlets=false&match_route_by_suburb=false&match_stop_by_gtfs_stop_id=false'.format(search_term)
+    res = requests.get(getUrl(param_query)).json()
+    i=0
+    dep_list = list()
+    stop_descr_available = True
+    speech_text = ""
+    if res.get('stops') is not None:
+        stop = res.get('stops')[0]
+        stop_id  = stop['stop_id']
+        stop_name = stop['stop_name']
+        stop_route_type = stop['route_type']
+        api_query = '/v3/stops/{0}/route_type/{1}'.format(stop_id,stop_route_type)
+        resp = requests.get(getUrl(api_query)).json()
+        resp_facility = resp['stop']
+        stop_descr = resp_facility['station_description']
+        if (stop_descr is None or stop_descr == "")== False:
+            speech_text = 'At stop {0}  {1}'.format(stop_name, stop_descr)
+            stop_amenities  = resp_facility['stop_amenities']
+            if stop_amenities is not None:
+                try:
+                    if str(stop_amenities['toilet']) in ['True', 'true']:
+                        speech_text = speech_text + 'Toilet is available'
+                    else:
+                        speech_text = speech_text + 'Toilet is  not available'
+                    if stop_amenities is not None:
+                        if str(stop_amenities['taxi_rank']) in ['True', 'true']:
+                            speech_text = speech_text + 'taxi rank is available'
+                        else:
+                            speech_text = speech_text + 'taxi rank is  not available'
+                    if stop_amenities is not None:
+                        if stop_amenities['car_parking'] is not None:
+                            speech_text = speech_text + 'car parking is {0}'.format(stop_amenities['car_parking'])
+                        else:
+                            speech_text = speech_text + 'car parking is not available'
+                except Exception as ex:
+                    print('Got error while fetching facilities for stop. {0}'.format(ex.args[0]))
+
+        else:
+            speech_text = 'Sorry, for stop {0}  information is not available. Please try later'.format(stop_name)
+
+        if speech_text == "":
+            speech_text = 'Sorry no information found for the stop'
+    else:
+        speech_text = 'Sorry no stop found for the input'
+
+    speech_text = speech_text.replace('/', ' ')
+
+    return speech_text
+
+
+
+
+search_term = 'Casterton'
 route_type = 0
-departure_list = get_departures_for_mode_and_stop(route_type, search_term)
-if departure_list is not None:
-    speech_text = 'At stop {0}, next {1} departures are  '.format(departure_list[0]['stop_name'], len(departure_list))
-    speech = list()
-    for i in range(len(departure_list)):
-        time = departure_list[i]['scheduled_departure_utc'].split('T')[1].replace('Z','') + ' UTC'
-        speech.append('At {0} for route {1} in direction {2} at platform number {3} '.format(
-            time, departure_list[i]['route_name'], departure_list[i]['direction'],
-            departure_list[i]['platform_number'])
-        )
+# departure_list = get_departures_for_mode_and_stop(route_type, search_term)
+# if departure_list is not None:
+#     speech_text = 'At stop {0}, next {1} departures are  '.format(departure_list[0]['stop_name'], len(departure_list))
+#     speech = list()
+#     for i in range(len(departure_list)):
+#         time = departure_list[i]['scheduled_departure_utc'].split('T')[1].replace('Z','') + ' UTC'
+#         speech.append('At {0} for route {1} in direction {2} at platform number {3} '.format(
+#             time, departure_list[i]['route_name'], departure_list[i]['direction'],
+#             departure_list[i]['platform_number'])
+#         )
+#
+#     speech_text = speech_text + ", ".join(speech)
+#     print(speech_text)
+#response1 = requests.get(getUrl('/v3/stops/route/1/route_type/0')).json()
+# response = requests.get(getUrl('/v3/stops/1012/route_type/0')).json()
 
-    speech_text = speech_text + ", ".join(speech)
-    print(speech_text)
-
-print(speech_text)
+response = get_facility_for_stop(search_term)
+#response = requests.get(getUrl('/v3/route_types')).json()
+print(response)
