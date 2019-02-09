@@ -159,14 +159,28 @@
                                         },
                                         {
                                             "type": "Text",
-                                            "text": "<b>${payload.bodyTemplate2Data.textContent.title.text}</b>",
-                                            "style": "textStyleBody",
+                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle1.text}",
+                                            "style": "textStylePrimary",
                                             "width": "70vw",
                                             "textAlign": "center"
                                         },
                                         {
                                             "type": "Text",
-                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle.text}",
+                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle2.text}",
+                                            "style": "textStylePrimary",
+                                            "width": "70vw",
+                                            "textAlign": "center"
+                                        },
+                                        {
+                                            "type": "Text",
+                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle3.text}",
+                                            "style": "textStylePrimary",
+                                            "width": "70vw",
+                                            "textAlign": "center"
+                                        },
+                                        {
+                                            "type": "Text",
+                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle4.text}",
                                             "style": "textStylePrimary",
                                             "width": "70vw",
                                             "textAlign": "center"
@@ -191,14 +205,6 @@
                     "height": "100vh",
                     "items": [
                         {
-                            "type": "Image",
-                            "source": "${payload.bodyTemplate2Data.backgroundImage.sources[0].url}",
-                            "scale": "best-fill",
-                            "width": "100vw",
-                            "height": "100vh",
-                            "position": "absolute"
-                        },
-                        {
                             "type": "AlexaHeader",
                             "headerTitle": "${payload.bodyTemplate2Data.title}",
                             "headerAttributionImage": "${payload.bodyTemplate2Data.logoUrl}"
@@ -208,10 +214,20 @@
                             "direction": "row",
                             "paddingLeft": "60dp",
                             "paddingRight": "72dp",
+                            "paddingBottom": "100dp",
                             "grow": 1,
                             "shrink": 1,
                             "height": "100vh",
                             "items": [
+                                {
+                                    "type": "Image",
+                                    "source": "${payload.bodyTemplate2Data.image.sources[0].url}",
+                                    "scale": "best-fill",
+                                    "width": "100vw",
+                                    "height": "100vh",
+                                    "position": "absolute",
+                                    "overlayColor": "rgba(0, 0, 0, 0.6)"
+                                },
                                 {
                                     "type": "ScrollView",
                                     "height": "100%",
@@ -223,18 +239,33 @@
                                             "items": [
                                                 {
                                                     "type": "Text",
-                                                    "text": "<b>Next Departures</b>",
+                                                    "text": "<b>Help !</b>",
                                                     "style": "textStylePrimary",
                                                     "color": "#4dd2ff"
                                                 },
                                                 {
                                                     "type": "Text",
                                                     "text": "<b>${payload.bodyTemplate2Data.textContent.title.text}</b>",
-                                                    "style": "textStyleBody"
+                                                    "style": "textStyleSecondary"
                                                 },
                                                 {
                                                     "type": "Text",
-                                                    "text": "${payload.bodyTemplate2Data.textContent.subtitle.text}",
+                                                    "text": "${payload.bodyTemplate2Data.textContent.subtitle1.text}",
+                                                    "style": "textStylePrimary"
+                                                },
+                                                {
+                                                    "type": "Text",
+                                                    "text": "${payload.bodyTemplate2Data.textContent.subtitle2.text}",
+                                                    "style": "textStylePrimary"
+                                                },
+                                                {
+                                                    "type": "Text",
+                                                    "text": "${payload.bodyTemplate2Data.textContent.subtitle3.text}",
+                                                    "style": "textStylePrimary"
+                                                },
+                                                {
+                                                    "type": "Text",
+                                                    "text": "${payload.bodyTemplate2Data.textContent.subtitle4.text}",
                                                     "style": "textStylePrimary"
                                                 },
                                                 {
@@ -248,14 +279,6 @@
                                             ]
                                         }
                                     ]
-                                },
-                                {
-                                    "type": "Image",
-                                    "source": "${payload.bodyTemplate2Data.image.sources[0].url}",
-                                    "width": 340,
-                                    "height": 384,
-                                    "scale": "best-fit",
-                                    "align": "center"
                                 }
                             ]
                         },
@@ -314,11 +337,23 @@
             "textContent": {
                 "title": {
                     "type": "PlainText",
-                    "text": ""
+                    "text": "\n\n\n"
                 },
-                "subtitle": {
+                "subtitle1": {
                     "type": "PlainText",
-                    "text": ""
+                    "text": "To get routes ask   <i> \"get routes\", \n</i>"
+                },
+                "subtitle4": {
+                    "type": "PlainText",
+                    "text": "To get stops ask   <i> \"get train stops\", </i>"
+                },
+                "subtitle2": {
+                    "type": "PlainText",
+                    "text": "To get departures you may ask   <i> \"get departures\", </i>"
+                },
+                "subtitle3": {
+                    "type": "PlainText",
+                    "text": "To get stop information ask   <i> \"get stop info\", </i>"
                 },
                 "primaryText": {
                     "type": "PlainText",

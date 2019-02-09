@@ -288,8 +288,15 @@ route_type = 0
 #     speech_text = speech_text + ", ".join(speech)
 #     print(speech_text)
 #response1 = requests.get(getUrl('/v3/stops/route/1/route_type/0')).json()
-# response = requests.get(getUrl('/v3/stops/1012/route_type/0')).json()
-
-response = get_facility_for_stop(search_term)
+# "route": {
+#     "route_type": 0,
+#     "route_id": 0,
+#     "route_name": "string",
+#     "route_number": "string",
+#     "route_gtfs_id": "string"
+# },
+response = requests.get(getUrl('/v3/routes')).json()['routes']
+r = response
+#response = get_facility_for_stop(search_term)
 #response = requests.get(getUrl('/v3/route_types')).json()
 print(response)

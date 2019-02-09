@@ -208,13 +208,24 @@
                             "direction": "row",
                             "paddingLeft": "60dp",
                             "paddingRight": "72dp",
+                            "paddingBottom": "100dp",
                             "grow": 1,
                             "shrink": 1,
                             "height": "100vh",
                             "items": [
                                 {
+                                    "type": "Image",
+                                    "source": "${payload.bodyTemplate2Data.image.sources[0].url}",
+                                    "scale": "best-fill",
+                                    "width": "100vw",
+                                    "height": "100vh",
+                                    "position": "absolute",
+                                    "overlayColor": "rgba(0, 0, 0, 0.6)"
+                                },
+                                {
                                     "type": "ScrollView",
                                     "height": "100%",
+                                    "width": "90vw",
                                     "grow": 1,
                                     "shrink": 1,
                                     "item": [
@@ -248,14 +259,6 @@
                                             ]
                                         }
                                     ]
-                                },
-                                {
-                                    "type": "Image",
-                                    "source": "${payload.bodyTemplate2Data.image.sources[0].url}",
-                                    "width": 340,
-                                    "height": 384,
-                                    "scale": "best-fit",
-                                    "align": "center"
                                 }
                             ]
                         },
@@ -268,7 +271,7 @@
             ]
         }
     },
-    "dataSources": {
+    "datasources": {
         "bodyTemplate2Data": {
             "type": "object",
             "objectId": "bt2Sample",

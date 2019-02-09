@@ -3,15 +3,11 @@ import json
 import copy
 sb = SkillBuilder()
 from ask_sdk_core.utils import is_request_type
-from ask_sdk_model.ui import SimpleCard
 from ask_sdk_model import Response
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model.interfaces.alexa.presentation.apl import UserEvent
 from ask_sdk_model.dialog.delegate_directive import DelegateDirective
-from ask_sdk_model.dialog.elicit_slot_directive import ElicitSlotDirective
-from ask_sdk_model.interfaces.alexa.presentation.apl import (
-    RenderDocumentDirective, ExecuteCommandsDirective, SpeakItemCommand,
-    AutoPageCommand, HighlightMode)
+from ask_sdk_model.interfaces.alexa.presentation.apl import RenderDocumentDirective
 import requests
 import  os
 from ask_sdk_core.utils import is_intent_name
@@ -51,6 +47,14 @@ def getUrl(request):
     hashed = hmac.new(bkey, raw.encode('utf-8'), sha1)
     signature = hashed.hexdigest()
     return BASE_URL + raw + '&signature={1}'.format(ptv_dev_id, signature)
+
+def is_apl_supported(handler_input):
+
+    if  handler_input.request_envelope.context.system.device.supported_interfaces.alexa_presentation_apl is None:
+        return False
+    else:
+        return True
+
 
 def load_apl_document(file_path):
     # type: (str) -> Dict[str, Any]
@@ -172,7 +176,7 @@ def get_departures_for_mode_and_stop(handler_input, route_type, search_term, apl
     param_query = '/v3/search/{0}?route_types={1}&include_addresses=false&include_outlets=false&match_route_by_suburb=false&match_stop_by_gtfs_stop_id=false'.format(search_term,route_type)
     res = requests.get(getUrl(param_query)).json()
     apl_doc = load_apl_document(apl_template)['document']
-    apl_data = load_apl_document(apl_template)['dataSources']
+    apl_data = load_apl_document(apl_template)['datasources']
 
     i=0
     dep_list = list()
@@ -217,14 +221,18 @@ def get_departures_for_mode_and_stop(handler_input, route_type, search_term, apl
 
             speech_text = speech_text + ", ".join(speech)
             apl_data['bodyTemplate2Data']['textContent']['primaryText']['text'] = "\n\n".join(display_text)
-            handler_input.response_builder.speak(speech_text).set_should_end_session(
-                True).add_directive(
-                RenderDocumentDirective(
-                    token="GetDepartures",
-                    document=apl_doc,
-                    datasources=apl_data
+            if is_apl_supported(handler_input):
+                handler_input.response_builder.speak(speech_text).set_should_end_session(
+                    True).add_directive(
+                    RenderDocumentDirective(
+                        token="GetDepartures",
+                        document=apl_doc,
+                        datasources=apl_data
+                    )
                 )
-            )
+            else:
+                handler_input.response_builder.speak(speech_text).set_should_end_session(True)
+
     else:
         speech_text = "Sorry I could not find the information for {0}. Please try again".format(search_term)
         handler_input.response_builder.speak(speech_text).set_should_end_session(True)
@@ -236,7 +244,6 @@ def fill_routes(handler_input, mode_value):
     if 'mode_name_type_map' in handler_input.attributes_manager.session_attributes:
         mode_name_type_map = handler_input.attributes_manager.session_attributes['mode_name_type_map']
     else:
-
         mode_name_type_map = get_route_types()[1]
 
     handler_input.attributes_manager.session_attributes['mode_name_type_map'] = mode_name_type_map
@@ -247,7 +254,7 @@ def fill_routes(handler_input, mode_value):
         all_routes = get_all_routes()
         route_type = mode_name_type_map.get(str.lower(mode_value))
         list_doc = load_apl_document('apl_route_list.json')
-        data_source = list_doc['dataSources']
+        data_source = list_doc['datasources']
         data_source['listTemplate1Metadata']['title'] = "Route List for {0}".format(mode_value)
         route_list = list()
         for item in all_routes:
@@ -265,6 +272,7 @@ def fill_routes(handler_input, mode_value):
                 route_list_item = copy.deepcopy(load_apl_document('apl_route_list_item_template.json'))
                 route_list_item['ordinalNumber'] = i + 1
                 route_list_item['textContent']['primaryText']['text'] = item
+                route_list_item['textContent']['ecoSpotText']['text'] = item[:30] + "..." if len(item)>33 else item
                 route_list_item['listItemIdentifier'] = item
                 route_list_item['token'] = mode_value
                 route_list.append(route_list_item)
@@ -278,12 +286,15 @@ def fill_routes(handler_input, mode_value):
 
         speech_text = 'Total {0} routes available for {1} and some of these are {2} '.format(
             len(current_route_names_list), mode_value, speech_text_temp)
+        if is_apl_supported(handler_input):
+            handler_input.response_builder.speak(speech_text).ask(speech_text).set_should_end_session(True).add_directive(
+                RenderDocumentDirective(
+                    token="FIndRoutes",
+                    document=list_doc['document'],
+                    datasources=data_source))
+        else:
+            handler_input.response_builder.speak(speech_text).ask(speech_text).set_should_end_session(True)
 
-        handler_input.response_builder.speak(speech_text).ask(speech_text).add_directive(
-            RenderDocumentDirective(
-                token="FIndRoutes",
-                document=list_doc['document'],
-                datasources=data_source))
 
     return
 
@@ -297,7 +308,7 @@ def get_facility_for_stop(handler_input, search_term, apl_template):
     res = requests.get(getUrl(param_query)).json()
     speech_text = ""
     apl_doc = load_apl_document(apl_template)['document']
-    apl_data = load_apl_document(apl_template)['dataSources']
+    apl_data = load_apl_document(apl_template)['datasources']
     if res.get('stops') is not None:
         stop = res.get('stops')[0]
         stop_id  = stop['stop_id']
@@ -342,6 +353,51 @@ def get_facility_for_stop(handler_input, search_term, apl_template):
     return speech_text
 
 
+def fill_stops_list(handler_input, stop_name_dict, route_name):
+    stops_names = list()
+    stop_list = list()
+    speech_text = "Sorry could not find the stop names for given input. Please try again"
+    apl_doc = load_apl_document("apl_stop_list.json")['document']
+    data_source = load_apl_document("apl_stop_list.json")['datasources']
+    if stop_name_dict is not None:
+        st_list = list(stop_name_dict.keys())
+        data_source['listTemplate1Metadata']['title'] = "Stop List for Route: {0}".format(route_name)
+        for i in range(len(st_list)):
+            stops_names.append(st_list[i])
+            stop_list_item = copy.deepcopy(load_apl_document('apl_stop_list_item_template.json'))
+            stop_list_item['ordinalNumber'] = i + 1
+            stop_list_item['textContent']['primaryText']['text'] = st_list[i]
+            stop_list_item['textContent']['ecoSpotText']['text'] = st_list[i][:30] + "..." if len(st_list[i]) > 33 else st_list[i]
+            stop_list_item['listItemIdentifier'] = st_list[i]
+            stop_list_item['token'] = route_name
+            stop_list.append(stop_list_item)
+
+        data_source['listTemplate1ListData']['listPage']['listItems'] = stop_list
+        speech_text = str.format('Total {0} stops for route ' + route_name + ' and these are {1}',
+                                 str(len(stops_names)), ", ".join(stops_names))
+    if is_apl_supported(handler_input):
+        handler_input.response_builder.speak(speech_text).ask(speech_text).set_should_end_session(True).add_directive(
+            RenderDocumentDirective(
+                token="FIndStops",
+                document=apl_doc,
+                datasources=data_source)
+        )
+    else:
+        handler_input.response_builder.speak(speech_text).ask(speech_text).set_should_end_session(True)
+    return
+
+
+
+def go_home_handler(handler_input,speech_text,end_session:bool):
+    handler_input.response_builder.speak(speech_text).set_should_end_session(end_session)
+    if is_apl_supported(handler_input):
+        handler_input.response_builder.add_directive(
+            RenderDocumentDirective(
+            token="LaunchRequest",
+            document=load_apl_document("apl_launch_trans_info.json")['document'],
+            datasources=load_apl_document("apl_launch_trans_info.json")['datasources'])
+        )
+
 @sb.request_handler(can_handle_func=is_request_type("Alexa.Presentation.APL.UserEvent"))
 def alexa_user_event_request_handler(handler_input: HandlerInput):
     # Handler for Skill Launch
@@ -351,8 +407,8 @@ def alexa_user_event_request_handler(handler_input: HandlerInput):
     item_selected = arguments[0]
     item_ordinal =  arguments[1]
     item_title = arguments[2]
-    if item_selected == 'ModeList':
-        fill_routes(handler_input, item_title)
+    if item_selected == 'Logo':
+        go_home_handler(handler_input, "", True)
 
     return handler_input.response_builder.response
 
@@ -360,13 +416,7 @@ def alexa_user_event_request_handler(handler_input: HandlerInput):
 def launch_request_handler(handler_input):
     speech_text = "Welcome, ask Trans Info about routes, stops and departures for Public Transport Victoria. You can say get departures"
     #get_all_routes( handler_input.attributes_manager.session_attributes)
-    handler_input.response_builder.speak(speech_text).set_should_end_session(
-         False).add_directive(
-        RenderDocumentDirective(
-                token="LaunchRequest",
-                document = load_apl_document("apl_launch_trans_info.json")['document'],
-                datasources = load_apl_document("apl_launch_trans_info.json")['dataSources'])
-            )
+    go_home_handler(handler_input, speech_text, False)
     return handler_input.response_builder.response
 
 @sb.request_handler(can_handle_func=is_intent_name("GetModeIntent"))
@@ -380,13 +430,15 @@ def get_modes_request_handler(handler_input):
             route_types.append(item['route_type_name'])
 
         speech_text = 'Available modes of transport are ' + ", ".join(route_types)
-        handler_input.response_builder.speak(speech_text).set_should_end_session(
-            False).add_directive(
-            RenderDocumentDirective(
-                token="GetModeIntent",
-                document=load_apl_document("apl_launch_template.json")['document'],
-                datasources=load_apl_document("apl_launch_template.json")['dataSources'])
-        )
+        if is_apl_supported(handler_input):
+            handler_input.response_builder.speak(speech_text).set_should_end_session(True).add_directive(
+                RenderDocumentDirective(
+                    token="GetModeIntent",
+                    document=load_apl_document("apl_launch_template.json")['document'],
+                    datasources=load_apl_document("apl_launch_template.json")['datasources'])
+            )
+        else:
+            handler_input.response_builder.speak(speech_text).set_should_end_session(True)
     else:
         speech_text = "Sorry there is problem in finding the data. Please try again"
         handler_input.response_builder.speak(speech_text).set_should_end_session(False)
@@ -400,13 +452,16 @@ def get_line_request_handler(handler_input):
     if line_names is not None:
         speech_text = 'line names are ' + ", ".join(line_names[0])
         handler_input.attributes_manager.session_attributes['routes_name_id_map'] = line_names[1]
-        handler_input.response_builder.speak(speech_text).set_should_end_session(
-            False).add_directive(
-            RenderDocumentDirective(
-                token="GetLinesIntent",
-                document=load_apl_document("apl_launch_trans_info.json")['document'],
-                datasources=load_apl_document("apl_launch_trans_info.json")['dataSources'])
-        )
+        if is_apl_supported(handler_input):
+            handler_input.response_builder.speak(speech_text).set_should_end_session(True).add_directive(
+                RenderDocumentDirective(
+                    token="GetLinesIntent",
+                    document=load_apl_document("apl_launch_trans_info.json")['document'],
+                    datasources=load_apl_document("apl_launch_trans_info.json")['datasources'])
+            )
+        else:
+            handler_input.response_builder.speak(speech_text).set_should_end_session(True)
+
 
     else:
         speech_text = "Sorry there is problem in finding line names. Please try again"
@@ -414,73 +469,73 @@ def get_line_request_handler(handler_input):
              False)
     return handler_input.response_builder.response
 
-@sb.request_handler(can_handle_func=is_intent_name("GetLineStopsIntent"))
-def get_lines_stops_intent_handler(handler_input):
-
-    slots = handler_input.request_envelope.request.intent.slots
-    dialogstate = handler_input.request_envelope.request.dialog_state
-    intent_request = handler_input.request_envelope.request.intent
-    print('slot line = ' + slots['line'].value)
-    print(handler_input)
-    if handler_input.attributes_manager.session_attributes is None:
-        print('attributes_manager is null')
-        handler_input.attributes_manager.session_attributes = {}
-    else:
-        print('attributes_manager', handler_input.attributes_manager.session_attributes)
-    if 'line' in slots:
-        print('slot line = ' + slots['line'].value)
-        line_value = slots['line'].value
-    else:
-        line_value = None
-
-    speech_text = ""
-    route_id = ""
-
-    if dialogstate.value != "COMPLETED" or line_value is None:
-        handler_input.response_builder.set_should_end_session(False)
-        handler_input.response_builder.add_directive(DelegateDirective(updated_intent=intent_request))
-        return handler_input.response_builder.response
-
-    else:
-        print(str.format("Getting Stops for line = {0}", line_value ))
-        if 'routes_name_id_map' in handler_input.attributes_manager.session_attributes:
-            routes_name_id_map = handler_input.attributes_manager.session_attributes['routes_name_id_map']
-        else:
-            print('session attributes were empty')
-            stops_names = list()
-            routes_name_id_map = get_line_names()[1]
-            print(routes_name_id_map)
-            handler_input.attributes_manager.session_attributes['routes_name_id_map'] = routes_name_id_map
-
-            if routes_name_id_map.get(line_value) is not None:
-                route_id  = routes_name_id_map.get(line_value)
-                api_query = '/v3/stops/route/{0}/route_type/0'.format(route_id)
-                response = requests.get(getUrl(api_query))
-
-                if  response.status_code == 200:
-                    stops_list = response.json()['stops']
-                    print(stops_list)
-                    handler_input.attributes_manager.session_attributes['stops_list'] = response.json()['stops']
-
-                    for i in range(len(stops_list)):
-                        stops_names.append(stops_list[i]['stop_name'])
-
-                    speech_text = 'stops for line ' + line_value + ' are ' + ", ".join(stops_names)
-
-                else:
-                    speech_text = " Sorry could not find the stop names for given input. Please try again"
-            else:
-                handler_input.response_builder.add_directive(DelegateDirective(updated_intent=intent_request))
-
-        handler_input.response_builder.speak(speech_text).ask(speech_text).set_card(
-            SimpleCard("Hello World", speech_text)).add_directive(
-                RenderDocumentDirective(
-                    token="pagerToken",
-                    document=load_apl_document("apl_launch_trans_info.json")['document'],
-                    datasources=load_apl_document("apl_launch_trans_info.json")['dataSources']
-                )
-        )
-        return handler_input.response_builder.response
+# @sb.request_handler(can_handle_func=is_intent_name("GetLineStopsIntent"))
+# def get_lines_stops_intent_handler(handler_input):
+#
+#     slots = handler_input.request_envelope.request.intent.slots
+#     dialogstate = handler_input.request_envelope.request.dialog_state
+#     intent_request = handler_input.request_envelope.request.intent
+#     print('slot line = ' + slots['line'].value)
+#     print(handler_input)
+#     if handler_input.attributes_manager.session_attributes is None:
+#         print('attributes_manager is null')
+#         handler_input.attributes_manager.session_attributes = {}
+#     else:
+#         print('attributes_manager', handler_input.attributes_manager.session_attributes)
+#     if 'line' in slots:
+#         print('slot line = ' + slots['line'].value)
+#         line_value = slots['line'].value
+#     else:
+#         line_value = None
+#
+#     speech_text = ""
+#     route_id = ""
+#
+#     if dialogstate.value != "COMPLETED" or line_value is None:
+#         handler_input.response_builder.set_should_end_session(False)
+#         handler_input.response_builder.add_directive(DelegateDirective(updated_intent=intent_request))
+#         return handler_input.response_builder.response
+#
+#     else:
+#         print(str.format("Getting Stops for line = {0}", line_value ))
+#         if 'routes_name_id_map' in handler_input.attributes_manager.session_attributes:
+#             routes_name_id_map = handler_input.attributes_manager.session_attributes['routes_name_id_map']
+#         else:
+#             print('session attributes were empty')
+#             stops_names = list()
+#             routes_name_id_map = get_line_names()[1]
+#             print(routes_name_id_map)
+#             handler_input.attributes_manager.session_attributes['routes_name_id_map'] = routes_name_id_map
+#
+#             if routes_name_id_map.get(line_value) is not None:
+#                 route_id  = routes_name_id_map.get(line_value)
+#                 api_query = '/v3/stops/route/{0}/route_type/0'.format(route_id)
+#                 response = requests.get(getUrl(api_query))
+#
+#                 if  response.status_code == 200:
+#                     stops_list = response.json()['stops']
+#                     print(stops_list)
+#                     handler_input.attributes_manager.session_attributes['stops_list'] = response.json()['stops']
+#
+#                     for i in range(len(stops_list)):
+#                         stops_names.append(stops_list[i]['stop_name'])
+#
+#                     speech_text = 'stops for line ' + line_value + ' are ' + ", ".join(stops_names)
+#
+#                 else:
+#                     speech_text = " Sorry could not find the stop names for given input. Please try again"
+#             else:
+#                 handler_input.response_builder.add_directive(DelegateDirective(updated_intent=intent_request))
+#
+#         handler_input.response_builder.speak(speech_text).ask(speech_text).set_card(
+#             SimpleCard("Hello World", speech_text)).add_directive(
+#                 RenderDocumentDirective(
+#                     token="pagerToken",
+#                     document=load_apl_document("apl_launch_trans_info.json")['document'],
+#                     datasources=load_apl_document("apl_launch_trans_info.json")['datasources']
+#                 )
+#         )
+#         return handler_input.response_builder.response
 
 @sb.request_handler(can_handle_func=is_intent_name("GetRoutesIntent"))
 def get_routes_intent_handler(handler_input):
@@ -518,7 +573,6 @@ def get_routes_stops_intent_handler(handler_input):
     dialogstate = handler_input.request_envelope.request.dialog_state
     intent_request = handler_input.request_envelope.request.intent
 
-
     if 'mode' in slots:
         print('mode = ' + slots['mode'].value)
         mode_value = str.lower(slots['mode'].value)
@@ -555,7 +609,7 @@ def get_routes_stops_intent_handler(handler_input):
         current_route_name = ""
         current_route_id = ""
         route_type = int()
-        stops_names = list()
+
         if mode_name_type_map.get(str.lower(mode_value)) is not None:
             all_routes = get_all_routes()
             route_type = mode_name_type_map.get(str.lower(mode_value))
@@ -580,22 +634,9 @@ def get_routes_stops_intent_handler(handler_input):
             if current_route_name != "":
                 print('finding stops for mode = {0} route = {1} route_id = {2} and route_type = {3} '.format(mode_value, current_route_name,current_route_id, route_type))
                 stops_name_id_pairs = get_all_sotps_of_route(route_type, current_route_id)
-                # handler_input.attributes_manager.session_attributes['stops_list'] = response.json()['stops']
-                if stops_name_id_pairs is not None:
-                    st_list = list(stops_name_id_pairs.keys())
-                    for i in range(len(st_list)):
-                        stops_names.append(st_list[i])
+                fill_stops_list(handler_input, stops_name_id_pairs, current_route_name)
+                return handler_input.response_builder.response
 
-                    speech_text = str.format('Total {0} stops for route ' + current_route_name + ' and these are {1}',
-                                             str(len(stops_names)),", ".join(stops_names))
-
-                else:
-                    speech_text = " Sorry could not find the stop names for given input. Please try again"
-
-
-
-        #print('current_route_names_list', current_route_names_list)
-        print('speech text = ' + speech_text)
         handler_input.response_builder.speak(speech_text).ask(speech_text)
         return handler_input.response_builder.response
 
@@ -647,9 +688,18 @@ def find_intent_handler(handler_input):
 @sb.request_handler(can_handle_func=is_intent_name("AMAZON.HelpIntent"))
 def help_intent_handler(handler_input):
     speech_text = "Trans Info provides Information about Routes, Stops and Next Departures for various mode of transports. Mode of transports" +\
-                  " are Train, Bus, Tram, Vline and Night Bus. For example you can ask get tram departures."
+                  " are Train, Bus, Tram, Vline and Night Bus. To know about routes for trains ask get train routes. To know about stops of a route you can ask get stops. " +\
+                  "to know next five departures you can ask get departures. To know about stops facilities please ask fins stop info"
 
-    handler_input.response_builder.speak(speech_text).set_should_end_session(False)
+    handler_input.response_builder.speak(speech_text).ask("Please ask for information about victoria transports").set_should_end_session(False)
+    if is_apl_supported(handler_input):
+        handler_input.response_builder.add_directive(
+            RenderDocumentDirective(
+                token="GetLinesIntent",
+                document=load_apl_document("apl_help_info.json")['document'],
+                datasources=load_apl_document("apl_help_info.json")['datasources'])
+        )
+
     return handler_input.response_builder.response
 
 @sb.request_handler(can_handle_func=is_intent_name("GetModesIntent"))
@@ -664,13 +714,15 @@ def get_modes_intent_handler(handler_input):
         # if dynamic content is not available
         speech_text = "transport modes are train, tram, bus, vline and night bus"
 
-    handler_input.response_builder.speak(speech_text).set_should_end_session(
-        True).add_directive(
-        RenderDocumentDirective(
-            token="GetModesIntent",
-            document=load_apl_document("apl_launch_template.json")['document'],
-            datasources=load_apl_document("apl_launch_template.json")['dataSources'])
-        )
+    if is_apl_supported(handler_input):
+        handler_input.response_builder.speak(speech_text).set_should_end_session(True).add_directive(
+            RenderDocumentDirective(
+                token="GetModesIntent",
+                document=load_apl_document("apl_launch_template.json")['document'],
+                datasources=load_apl_document("apl_launch_template.json")['datasources'])
+            )
+    else:
+        handler_input.response_builder.speak(speech_text).set_should_end_session(True)
 
     return handler_input.response_builder.response
 
@@ -678,8 +730,7 @@ def get_modes_intent_handler(handler_input):
         is_intent_name("AMAZON.StopIntent")(input))
 def cancel_and_stop_intent_handler(handler_input):
     speech_text = "Goodbye!"
-
-    handler_input.response_builder.speak(speech_text)
+    go_home_handler(handler_input, speech_text, True)
     return handler_input.response_builder.response
 
 @sb.request_handler(can_handle_func=is_request_type("SessionEndedRequest"))
