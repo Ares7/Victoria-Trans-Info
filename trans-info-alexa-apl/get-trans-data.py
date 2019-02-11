@@ -296,7 +296,35 @@ route_type = 0
 #     "route_gtfs_id": "string"
 # },
 response = requests.get(getUrl('/v3/routes')).json()['routes']
-r = response
-#response = get_facility_for_stop(search_term)
-#response = requests.get(getUrl('/v3/route_types')).json()
-print(response)
+all_routes = dict()
+all_routes['all_routes']=response
+with open('all_routes_list.json', 'w') as outfile:
+    json.dump(all_routes, outfile)
+
+
+def get_all_routes(route_type:int):
+    routes = list()
+    try:
+        try:
+            with open('all_routes_list.json') as f:
+                data = json.load(f)['all_routes']
+                routes = [rt for rt in data if rt['route_type'] == route_type]
+        except:
+            print('Source: get_all_routes error while reading route from file')
+        if len(routes) < 1:
+            response = requests.get(getUrl('/v3/routes')).json()['routes']
+            routes = [rt for rt in response if rt['route_type'] == route_type]
+
+    except:
+        print('Source: get_all_routes, error while getting all routes:')
+    return routes
+
+stop_name_id_pair = get_all_sotps_of_route(2,954)
+data = dict()
+data["route_type"] = 2
+data["route_id"] = 954
+#data["route_stops"] = [{v:k } for k, v in stop_name_id_pair.items()]
+data["route_stops"] =  stop_name_id_pair
+
+with open('route_stops.json', 'w') as outfile:
+    json.dump(data, outfile)
