@@ -9,10 +9,13 @@ from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model.interfaces.alexa.presentation.apl import UserEvent
 from ask_sdk_model.dialog.delegate_directive import DelegateDirective
 from ask_sdk_model.interfaces.alexa.presentation.apl import RenderDocumentDirective
+from ask_sdk_model.response import Response
+from ask_sdk_model.ui import AskForPermissionsConsentCard
+from ask_sdk_model.services import ServiceException
 import requests
 import os
 from ask_sdk_core.utils import is_intent_name
-
+import boto3
 from hashlib import sha1
 import hmac
 
@@ -32,16 +35,25 @@ api_get_stops_on_route = '/v3/stops/route/{0}/route_type/{1}'
 # /v3/stops/route/{route_id}/route_type/{route_type}
 api_get_route_stops = '/v3/stops/route/{0}/route_type/{1}'
 
+api_get_nearby_stops = '/v3/stops/location/{0},{1}'
+
 ptv_api_key = os.environ['PTV_API_KEY']
 ptv_dev_id = os.environ['PTV_DEV_ID']
-
+TABLE_NAME_DB = 'victoria-trans-info'
+GEO_LOCATION_API_KEY = os.environ['GEO_LOCATION_API_KEY']
 number_map = {'1': 'first', '2': 'second', '3': 'third', '4': 'fourth', '5': 'and fifth'}
 mode_image_dict = {'train': 'https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/train_hi_res_512.png',
                    'bus': 'https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/bus_hi_res_512.png',
                    'tram': 'https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/tramhi_res_512.png',
                    'vline': 'https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/vline.png',
                    'night bus': 'https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/nightbus_hi_res_512.png'}
+NOTIFY_MISSING_PERMISSIONS = ("Please enable Location permissions in the Amazon Alexa app.")
+NO_ADDRESS = ("It looks like you don't have an address set. You can set your address from the companion app.")
+ADDRESS_AVAILABLE = "Here is your full address: {}, {}, {}"
+ERROR = "Uh Oh. Looks like something went wrong."
+LOCATION_FAILURE = ("There was an error with the Device Address API. Please try again.")
 
+permissions = ["read::alexa:device:all:address"]
 
 def getUrl(request):
     request = request + ('&' if ('?' in request) else '?')
@@ -70,9 +82,9 @@ def get_all_routes(route_type:int):
     routes = list()
     try:
         try:
-            with open('all_routes_list.json') as f:
-                data = json.load(f)['all_routes']
-                routes = [rt for rt in data if rt['route_type'] == route_type]
+            data = get_item_from_dynamodb('all_routes')
+            routes = [rt for rt in data if rt['route_type'] == route_type]
+            print('successfully reads routes from dynamoDB = {0}'.format(routes))
         except:
             print('Source: get_all_routes error while reading route from file')
         if len(routes) < 1:
@@ -84,9 +96,9 @@ def get_all_routes(route_type:int):
     return routes
 
 
-def get_all_sotps_of_route(route_type, route_id):
+def get_all_stops_of_route(route_type, route_id):
     api_query = '/v3/stops/route/{0}/route_type/{1}'.format(route_id, route_type)
-    print('query for get_all_sotps_of_route = {0}'.format(api_query))
+    print('query for get_all_stops_of_route = {0}'.format(api_query))
     response = requests.get(getUrl(api_query))
     stop_name_id_dict = dict()
     if response.status_code == 200:
@@ -127,11 +139,23 @@ def get_route_types() -> list:
         return None
 
 
+def get_route_name(route_id:int):
+    try:
+        with open('route_types.json') as f:
+            route_types = json.load(f)['route_types']['items']
+            for k, v in route_types.items():
+                if v == route_id:
+                    return k
+    except Exception as ex:
+        print('error source:get_route_name,  error = {0}'.format(ex.args[0]))
+        return ""
+
+
 def get_stop_id_in_mode(stop_name: str, route_type: int, route_id: int) -> list:
     print('entered in get_stop_id_in_mode for stop_name = {0} route_type = {1} route_id = {2}'.format(stop_name,
                                                                                                       route_type,
                                                                                                       route_id))
-    stop_name_ids = get_all_sotps_of_route(route_type, route_id)
+    stop_name_ids = get_all_stops_of_route(route_type, route_id)
     print('stop name id pair ={0}'.format(stop_name_ids))
     if stop_name_ids is not None:
         st_list = copy.deepcopy(list(stop_name_ids.keys()))
@@ -386,7 +410,7 @@ def fill_stops_list(handler_input, stop_name_dict, route_name, start_index=0):
     speech_text = "Sorry could not find the stop names for given input. Please try again"
     apl_doc = load_apl_document("apl_stop_list.json")['document']
     data_source = load_apl_document("apl_stop_list.json")['datasources']
-
+    print('message from fill_stops_list stop_name_dict= {0}, route)name= {1} , start_index = {2} '.format(stop_name_dict, route_name, start_index))
     max_index = len(stop_name_dict.keys()) if len(stop_name_dict.keys()) < start_index + 5 else start_index + 5
     if stop_name_dict is not None:
         st_list = list(stop_name_dict.keys())
@@ -406,16 +430,16 @@ def fill_stops_list(handler_input, stop_name_dict, route_name, start_index=0):
         handler_input.attributes_manager.session_attributes['current_index'] = max_index
         data_source['listTemplate1ListData']['listPage']['listItems'] = stop_list
         if start_index == 0:
-            speech_text = str.format('Total {0} stops for route ' + route_name , str(len(stops_names)))
+            speech_text = str.format('Total {0} stops for route ' + route_name , str(len(stop_name_dict)))
         else:
             speech_text = ""
 
-        speech_text = speech_text + ' stop names are {1}'.format(", ".join(stops_names))
+        speech_text = speech_text + ' stop names are {0}'.format(", ".join(stops_names))
         speech_text = speech_text.replace("&", "and")
         speech_text = speech_text.replace("-", " ")
-
+    # print(speech_text)
     if max_index < len(stop_name_dict.keys()):
-        speech_text = speech_text + " Do you want to know more routes?"
+        speech_text = speech_text + " Do you want to know more stops?"
         if is_apl_supported(handler_input):
             handler_input.response_builder.speak(speech_text).ask(speech_text).set_should_end_session(False).add_directive(
                 RenderDocumentDirective(token="FIndStops", document=apl_doc, datasources=data_source))
@@ -441,8 +465,124 @@ def go_home_handler(handler_input, speech_text, end_session: bool):
                 datasources=load_apl_document("apl_launch_trans_info.json")['datasources'])
         )
 
+"""
+Save all routes to daynamo db table
+"""
+def save_all_routes_dynamodb():
+    try:
+        response = requests.get(getUrl('/v3/routes')).json()['routes']
+        all_routes = dict()
+        client = boto3.client('dynamodb')
+        all_routes['all_routes'] = response
+        response = client.update_item(
+            TableName=TABLE_NAME_DB,
+            Key={'data_type': {'S': 'all_routes'},
+                 },
+            AttributeUpdates={'data_value': {
+                'Value': {'S': json.dumps(all_routes['all_routes'])}
+            }, }
+        )
+    except:
+        print("Source:save_all_routes_dynamodb, Error while saving data from DynamoDB")
 
-# ############################ Intent Handlers  #########################################
+
+"""
+Read data_value from dynamoDB
+"""
+def get_item_from_dynamodb(key_name):
+    try:
+        client = boto3.client('dynamodb')
+        response = client.get_item(
+            Key={
+                'data_type': {
+                    'S': key_name,
+                },
+            },
+            TableName=TABLE_NAME_DB,
+        )
+        routes_list = json.loads(response['Item']['data_value']['S'])
+        return routes_list
+    except:
+        print("Source:get_all_routes_from_dynamodb, Error while reading data from DynamoDB")
+        return None
+
+
+def get_nearby_stop(handler_input):
+    # type: (HandlerInput) -> Response
+    req_envelope = handler_input.request_envelope
+    service_client_fact = handler_input.service_client_factory
+    response_builder = handler_input.response_builder
+    speech_text = ""
+    address = ''
+    if not (req_envelope.context.system.user.permissions and req_envelope.context.system.user.permissions.consent_token):
+        handler_input.response_builder.speak(NOTIFY_MISSING_PERMISSIONS).set_should_end_session(True)
+        return handler_input.response_builder
+
+    try:
+        device_id = req_envelope.context.system.device.device_id
+        device_addr_client = service_client_fact.get_device_address_service()
+        addr = device_addr_client.get_full_address(device_id)
+
+        if addr.address_line1 is None and addr.state_or_region is None:
+            handler_input.response_builder.speak(NO_ADDRESS).set_should_end_session(True)
+        else:
+            address = '{0}, {1}, {2}, {3}, {4} {5}'.format(
+                addr.address_line1, addr.address_line2, addr.city,
+                addr.state_or_region, addr.postal_code, addr.country_code)
+            param = urlencode({'address': address, 'key': GEO_LOCATION_API_KEY})
+            query = 'https://maps.googleapis.com/maps/api/geocode/json?' + param
+            response = requests.get('https://maps.googleapis.com/maps/api/geocode/json?', param).json()
+            stop_list = list()
+            if response['status'].lower() == 'ok':
+                location = response['results'][0]['geometry']['location']
+                lat_long = [location['lat'], location['lng']]
+                print(lat_long)
+                response = requests.get(getUrl(api_get_nearby_stops.format(-37.824170, 145.060789)))
+                if response.status_code == 200:
+                    i = 0
+                    for st in response.json()['stops']:
+                        # take only 5 stops
+                        if i <5:
+                            stop_list.append('stop name is {0} stop distance  is {1} meters stop mode is {2}'.format(
+                                st['stop_name'], int(st['stop_distance'], get_route_name(st['route_type']) )))
+                            i = i + 1
+
+                    if len(stop_list) > 0:
+                        speech_text = ' Nearby stops are {0}'.format(", ".join(stop_list))
+                        speech_text = speech_text.replace('&', 'and')
+                        speech_text = speech_text.replace('#', ' ')
+
+
+                    else:
+                        speech_text = 'Sorry, no stop found near your address ' + address +\
+                                      '. Please check the address saved in the system and try again'
+
+            elif response['status'] == 'INVALID_REQUEST':
+                speech_text = 'Sorry, device address is not a invalid address. Please check and try again'
+            else:
+                speech_text = "Sorry there is some problem in getting the required information. Please try later"
+                print('error in getting response from PTV {0}'.format(response['status']))
+
+            if is_apl_supported(handler_input):
+                apl_doc = load_apl_document('apl_nearby_stops.json')
+                data_source = apl_doc['datasources']
+                data_source['bodyTemplate2Data']['textContent']['title']['text'] = 'Nearby Stops'
+                data_source['bodyTemplate2Data']['textContent']['subtitle']['text'] = address
+                data_source['bodyTemplate2Data']['textContent']['primaryText']['text'] = speech_text
+                handler_input.response_builder.speak(speech_text).set_should_end_session(True).add_directive(
+                    RenderDocumentDirective(
+                        token="NearbyStops",
+                        document=apl_doc['document'],
+                        datasources=data_source))
+
+        return
+    except ServiceException:
+        handler_input.response_builder.speak(ERROR)
+        return response_builder.response
+    except Exception as e:
+        raise e
+
+# ############################ Intent Handlers  #######################################################################
 @sb.request_handler(can_handle_func=is_request_type("LaunchRequest"))
 def launch_request_handler(handler_input):
     speech_text = "Welcome, ask Trans Info about routes, stops and departures for Public Transport Victoria." +\
@@ -453,13 +593,9 @@ def launch_request_handler(handler_input):
     handler_input.attributes_manager.session_attributes['current_mode'] = ""
     handler_input.attributes_manager.session_attributes['current_route_name'] = ""
 
-    # get_all_routes
+    # save_all_routes
     try:
-        response = requests.get(getUrl('/v3/routes')).json()['routes']
-        all_routes = dict()
-        all_routes['all_routes'] = response
-        with open('all_routes_list.json', 'w') as outfile:
-            json.dump(all_routes, outfile)
+        save_all_routes_dynamodb()
     except:
         print('error while fetching all routes')
     go_home_handler(handler_input, speech_text, False)
@@ -482,7 +618,7 @@ def alexa_user_event_request_handler(handler_input: HandlerInput):
 
 
 @sb.request_handler(can_handle_func=is_intent_name("GetModeIntent"))
-def get_modes_request_handler(handler_input):
+def get_modes_intent_handler(handler_input):
     speech_text = ""
     query = getUrl(api_get_route_types)
     response = requests.get(query)
@@ -504,6 +640,12 @@ def get_modes_request_handler(handler_input):
     else:
         speech_text = "Sorry there is problem in finding the data. Please try again"
         handler_input.response_builder.speak(speech_text).set_should_end_session(False)
+    return handler_input.response_builder.response
+
+
+@sb.request_handler(can_handle_func=is_intent_name("SearchNearbyStopsIntent"))
+def get_nearby_stops_intent_handler(handler_input):
+    get_nearby_stop(handler_input)
     return handler_input.response_builder.response
 
 
@@ -627,18 +769,20 @@ def get_routes_stops_intent_handler(handler_input):
 
             # if not match found
             if current_route_name != "":
-                print('finding stops for mode = {0} route = {1} route_id = {2} and route_type = {3} '.format(mode_value,
-                                                                                                             current_route_name,
-                                                                                                             current_route_id,
-                                                                                                             route_type))
-                stops_name_id_pairs = get_all_sotps_of_route(route_type, current_route_id)
+                print('finding stops for mode = {0} route = {1} route_id = {2} and route_type = {3} '.format(mode_value, current_route_name,current_route_id, route_type))
+                stops_name_id_pairs = get_all_stops_of_route(route_type, current_route_id)
+                # write data to dynamoDB
                 stops_data = dict()
                 stops_data["route_type"] = route_type
                 stops_data["route_id"] = current_route_id
                 stops_data["route_stops"] = stops_name_id_pairs
                 # write stops of the route to fetch in paging
-                with open('route_stops.json', 'w') as outfile:
-                    json.dump(stops_data, outfile)
+                client = boto3.client('dynamodb')
+                response = client.update_item(
+                    TableName='victoria-trans-info',
+                    Key={'data_type': {'S': 'route_stops'}, },
+                    AttributeUpdates={'data_value': {'Value': {'S': json.dumps(stops_data)}},}
+                )
                 handler_input.attributes_manager.session_attributes['current_route_name'] = current_route_name
                 fill_stops_list(handler_input, stops_name_id_pairs, current_route_name)
                 return handler_input.response_builder.response
@@ -748,8 +892,8 @@ def yes_intent_handler(handler_input):
         fill_routes(handler_input,_mode, _index)
 
     elif handler_input.attributes_manager.session_attributes['previous_intent'] == "GetRouteStops":
-        with open('route_list.json') as f:
-            route_stops = json.load(f)['route_stops']
+        route_stops = get_item_from_dynamodb('route_stops')['route_stops']
+        print(route_stops)
         fill_stops_list(handler_input, route_stops, _route, _index)
 
     # print(handler_input.response_builder.response)
