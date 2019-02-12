@@ -1,10 +1,9 @@
-from ask_sdk_core.skill_builder import SkillBuilder
+import os
 import json
 import copy
-
-sb = SkillBuilder()
+from ask_sdk_core.skill_builder import CustomSkillBuilder
+from ask_sdk_core.api_client import DefaultApiClient
 from ask_sdk_core.utils import is_request_type
-from ask_sdk_model import Response
 from ask_sdk_core.handler_input import HandlerInput
 from ask_sdk_model.interfaces.alexa.presentation.apl import UserEvent
 from ask_sdk_model.dialog.delegate_directive import DelegateDirective
@@ -12,15 +11,14 @@ from ask_sdk_model.interfaces.alexa.presentation.apl import RenderDocumentDirect
 from ask_sdk_model.response import Response
 from ask_sdk_model.ui import AskForPermissionsConsentCard
 from ask_sdk_model.services import ServiceException
-import requests
-import os
 from ask_sdk_core.utils import is_intent_name
 import boto3
 from hashlib import sha1
 import hmac
-
 import requests
 from urllib.parse import urlencode
+
+sb = CustomSkillBuilder(api_client=DefaultApiClient())
 
 BASE_URL = 'http://timetableapi.ptv.vic.gov.au'
 # route_types (array of integer) is required
@@ -139,12 +137,12 @@ def get_route_types() -> list:
         return None
 
 
-def get_route_name(route_id:int):
+def get_mode_name(route_type:int):
     try:
         with open('route_types.json') as f:
             route_types = json.load(f)['route_types']['items']
             for k, v in route_types.items():
-                if v == route_id:
+                if v == route_type:
                     return k
     except Exception as ex:
         print('error source:get_route_name,  error = {0}'.format(ex.args[0]))
@@ -354,9 +352,11 @@ VLine
 
 def get_facility_for_stop(handler_input, search_term, apl_template):
     search_term = search_term.replace(' ', '%20')
+    print('message from function get_facility_for_stop')
     param_query = '/v3/search/{0}?route_types=0&route_types=3&include_addresses=false&include_outlets=false&match_route_by_suburb=false&match_stop_by_gtfs_stop_id=false'.format(
         search_term)
     res = requests.get(getUrl(param_query)).json()
+    print('search result = {0}'.format(res))
     speech_text = ""
     apl_doc = load_apl_document(apl_template)['document']
     apl_data = load_apl_document(apl_template)['datasources']
@@ -514,6 +514,7 @@ def get_nearby_stop(handler_input):
     response_builder = handler_input.response_builder
     speech_text = ""
     address = ''
+    print('message from get_nearby_stop')
     if not (req_envelope.context.system.user.permissions and req_envelope.context.system.user.permissions.consent_token):
         handler_input.response_builder.speak(NOTIFY_MISSING_PERMISSIONS).set_should_end_session(True)
         return handler_input.response_builder
@@ -537,14 +538,15 @@ def get_nearby_stop(handler_input):
                 location = response['results'][0]['geometry']['location']
                 lat_long = [location['lat'], location['lng']]
                 print(lat_long)
-                response = requests.get(getUrl(api_get_nearby_stops.format(-37.824170, 145.060789)))
+                response = requests.get(getUrl('/v3/stops/location/{0},{1}'.format(-37.824170, 145.060789)))
                 if response.status_code == 200:
                     i = 0
                     for st in response.json()['stops']:
                         # take only 5 stops
-                        if i <5:
+                        print(st)
+                        if i < 5:
                             stop_list.append('stop name is {0} stop distance  is {1} meters stop mode is {2}'.format(
-                                st['stop_name'], int(st['stop_distance'], get_route_name(st['route_type']) )))
+                                st['stop_name'], st['stop_distance'], get_mode_name(st['route_type']) ))
                             i = i + 1
 
                     if len(stop_list) > 0:
@@ -819,23 +821,24 @@ def get_departure_intent_handler(handler_input):
         return handler_input.response_builder.response
 
 
-@sb.request_handler(can_handle_func=is_intent_name("FindFacilitiesIntent"))
+@sb.request_handler(can_handle_func=is_intent_name("FindStopInfoIntent"))
 def find_intent_handler(handler_input):
     slots = handler_input.request_envelope.request.intent.slots
-    dialogstate = handler_input.request_envelope.request.dialog_state
+    dialog_state = handler_input.request_envelope.request.dialog_state
     intent_request = handler_input.request_envelope.request.intent
-    handler_input.attributes_manager.session_attributes['previous_intent'] = "FindFacilitiesIntent"
+    handler_input.attributes_manager.session_attributes['previous_intent'] = "FindStopInfoIntent"
     if 'stop' in slots:
         stop_value = slots['stop'].value
     else:
         stop_value = None
 
-    if dialogstate.value != "COMPLETED" and stop_value is None:
+    if dialog_state.value != "COMPLETED" and stop_value is None:
         handler_input.response_builder.set_should_end_session(False)
         handler_input.response_builder.add_directive(DelegateDirective(updated_intent=intent_request))
         return handler_input.response_builder.response
     else:
-        get_facility_for_stop(handler_input, stop_value, 'apl_stop_info.json')
+        speech_text = get_facility_for_stop(handler_input, stop_value, 'apl_stop_info.json')
+        handler_input.response_builder.speak(speech_text).ask(speech_text).set_should_end_session(True)
         return handler_input.response_builder.response
 
 

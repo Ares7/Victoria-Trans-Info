@@ -192,11 +192,12 @@
                     "items": [
                         {
                             "type": "Image",
-                            "source": "${payload.bodyTemplate2Data.backgroundImage.sources[0].url}",
+                            "source": "${payload.bodyTemplate2Data.image.sources[0].url}",
                             "scale": "best-fill",
                             "width": "100vw",
                             "height": "100vh",
-                            "position": "absolute"
+                            "position": "absolute",
+                            "overlayColor": "rgba(0, 0, 0, 0.6)"
                         },
                         {
                             "type": "AlexaHeader",
@@ -223,7 +224,7 @@
                                             "items": [
                                                 {
                                                     "type": "Text",
-                                                    "text": "<b>Next Departures</b>",
+                                                    "text": "<b></b>",
                                                     "style": "textStylePrimary",
                                                     "color": "#4dd2ff"
                                                 },
@@ -248,14 +249,6 @@
                                             ]
                                         }
                                     ]
-                                },
-                                {
-                                    "type": "Image",
-                                    "source": "${payload.bodyTemplate2Data.image.sources[0].url}",
-                                    "width": 340,
-                                    "height": 384,
-                                    "scale": "best-fit",
-                                    "align": "center"
                                 }
                             ]
                         },
@@ -326,7 +319,7 @@
                 }
             },
             "logoUrl": "https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/web_hi_res_512.png",
-            "hintText": "Try, \"Alexa, find train departures\""
+            "hintText": "Try, \"Alexa, search nearby stops\""
         }
     }
 }
