@@ -180,6 +180,8 @@
                                     {
                                         "type": "VerticalListItem",
                                         "image": "${data.image.sources[0].url}",
+                                        "ordinalNumber" : "${data.ordinal}",
+                                        "listItemIdentifier": "${data.listItemIdentifier}",
                                         "primaryText": "${data.textContent.primaryText.text}",
                                         "ecoSpotText": "${data.textContent.ecoSpotText.text}"
                                     }
@@ -191,47 +193,72 @@
             },
             "VerticalListItem": {
                 "parameters": [
+                    "ordinal",
+                    "listItemIdentifier",
                     "primaryText",
                     "ecoSpotText"
                 ],
                 "items": [
                     {
                         "when": "${viewport.shape == 'round'}",
-                        "type": "Container",
-                        "direction": "row",
-                        "height": 150,
-                        "width": "100%",
-                        "alignItems": "center",
-                        "paddingBottom": "120dp",
-                        "items": [
-                            {
-                                "type": "Text",
-                                "text": "${ordinal}",
-                                "color": "white",
-                                "spacing": "5dp"
-                            },
-                            {
-                                "type": "Container",
-                                "direction": "column",
-                                "spacing": 5,
-                                "alignItems": "center",
-                                "items": [
-                                    {
-                                        "type": "Text",
-                                        "text": "${ecoSpotText}",
-                                        "style": "textStyleDetail",
-                                        "grow": 1,
-                                        "shrink": 1,
-                                        "fontWeight": "300",
-                                        "maxLines": 2
-                                    }
-                                ]
-                            }
-                        ]
+                        "type":"TouchWrapper",
+						"onPress":{
+						"type":"SendEvent",
+						"arguments": [
+							"Stop",
+							"${listItemIdentifier}",
+							"${ecoSpotText}"
+							]
+						},
+						"item":
+                        {
+                            "type": "Container",
+                            "direction": "row",
+                            "height": 150,
+                            "width": "100%",
+                            "alignItems": "center",
+                            "paddingBottom": "120dp",
+                            "items": [
+                                {
+                                    "type": "Text",
+                                    "text": "${ordinal}",
+                                    "color": "white",
+                                    "spacing": "5dp"
+                                },
+                                {
+                                    "type": "Container",
+                                    "direction": "column",
+                                    "spacing": 5,
+                                    "alignItems": "center",
+                                    "items": [
+                                        {
+                                            "type": "Text",
+                                            "text": "${ecoSpotText}",
+                                            "style": "textStyleDetail",
+                                            "grow": 1,
+                                            "shrink": 1,
+                                            "fontWeight": "300",
+                                            "maxLines": 2
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
                     },
                     {
+                        "type":"TouchWrapper",
+						"onPress":{
+						"type":"SendEvent",
+						"arguments": [
+							"Stop",
+							"${listItemIdentifier}",
+							"${primaryText}"
+							]
+						},
+						"item":
+                        {
                         "type": "Frame",
-                        "backgroundColor": "",
+                        "backgroundColor": "lightblue",
                         "item": [
                             {
                                 "type": "Container",
@@ -269,7 +296,7 @@
                                 ]
                             }
                         ]
-                    }
+                    }}
                 ]
             }
         },

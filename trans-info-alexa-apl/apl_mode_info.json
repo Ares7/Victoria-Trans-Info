@@ -159,14 +159,35 @@
                                         },
                                         {
                                             "type": "Text",
-                                            "text": "<b>${payload.bodyTemplate2Data.textContent.title.text}</b>",
-                                            "style": "textStyleBody",
+                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle1.text}",
+                                            "style": "textStylePrimary",
                                             "width": "70vw",
                                             "textAlign": "center"
                                         },
                                         {
                                             "type": "Text",
-                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle.text}",
+                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle2.text}",
+                                            "style": "textStylePrimary",
+                                            "width": "70vw",
+                                            "textAlign": "center"
+                                        },
+                                        {
+                                            "type": "Text",
+                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle3.text}",
+                                            "style": "textStylePrimary",
+                                            "width": "70vw",
+                                            "textAlign": "center"
+                                        },
+                                        {
+                                            "type": "Text",
+                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle4.text}",
+                                            "style": "textStylePrimary",
+                                            "width": "70vw",
+                                            "textAlign": "center"
+                                        },
+                                        {
+                                            "type": "Text",
+                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle5.text}",
                                             "style": "textStylePrimary",
                                             "width": "70vw",
                                             "textAlign": "center"
@@ -191,15 +212,6 @@
                     "height": "100vh",
                     "items": [
                         {
-                            "type": "Image",
-                            "source": "${payload.bodyTemplate2Data.image.sources[0].url}",
-                            "scale": "best-fill",
-                            "width": "100vw",
-                            "height": "100vh",
-                            "position": "absolute",
-                             "overlayColor": "rgba(0, 0, 0, 0.7)"
-                        },
-                        {
                             "type": "AlexaHeader",
                             "headerTitle": "${payload.bodyTemplate2Data.title}",
                             "headerAttributionImage": "${payload.bodyTemplate2Data.logoUrl}"
@@ -209,10 +221,20 @@
                             "direction": "row",
                             "paddingLeft": "60dp",
                             "paddingRight": "72dp",
+                            "paddingBottom": "100dp",
                             "grow": 1,
                             "shrink": 1,
                             "height": "100vh",
                             "items": [
+                                {
+                                    "type": "Image",
+                                    "source": "${payload.bodyTemplate2Data.image.sources[0].url}",
+                                    "scale": "best-fill",
+                                    "width": "100vw",
+                                    "height": "100vh",
+                                    "position": "absolute",
+                                    "overlayColor": "rgba(0, 0, 0, 0.6)"
+                                },
                                 {
                                     "type": "ScrollView",
                                     "height": "100%",
@@ -224,19 +246,14 @@
                                             "items": [
                                                 {
                                                     "type": "Text",
-                                                    "text": "<b>Stop Information</b>",
+                                                    "text": "<b></b>",
                                                     "style": "textStylePrimary",
                                                     "color": "#4dd2ff"
                                                 },
                                                 {
                                                     "type": "Text",
                                                     "text": "<b>${payload.bodyTemplate2Data.textContent.title.text}</b>",
-                                                    "style": "textStyleBody"
-                                                },
-                                                {
-                                                    "type": "Text",
-                                                    "text": "${payload.bodyTemplate2Data.textContent.subtitle.text}",
-                                                    "style": "textStylePrimary"
+                                                    "style": "textStyleSecondary"
                                                 },
                                                 {
                                                     "type": "Text",
@@ -307,19 +324,19 @@
             "textContent": {
                 "title": {
                     "type": "PlainText",
-                    "text": ""
+                    "text": "\n\n\n"
                 },
-                "subtitle": {
+                "subtitle1": {
                     "type": "PlainText",
                     "text": ""
                 },
                 "primaryText": {
                     "type": "PlainText",
-                    "text": ""
+                    "text": "<b>\"Goodbye\"</b>"
                 }
             },
             "logoUrl": "https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/web_hi_res_512.png",
-            "hintText": "Try, \"Alexa, find stop info\""
+            "hintText": "Try, \"Alexa, find train departures\""
         }
     }
 }

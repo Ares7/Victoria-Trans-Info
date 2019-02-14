@@ -144,53 +144,70 @@
                 ],
                 "item": [
                     {
-                        "type": "Container",
-                        "height": "100vh",
-                        "width": "100vw",
-                        "alignItems": "center",
-                        "justifyContent": "end",
-                        "items": [
-                            {
-                                "type": "Image",
-                                "position": "absolute",
-                                "height": "100vh",
-                                "width": "100vw",
-                                "overlayColor": "rgba(0, 0, 0, 0.6)",
-                                "source": "${data.image.sources[0].url}",
-                                "scale": "best-fill"
-                            },
-                            {
-                                "type": "AlexaHeader",
-                                "headerTitle": "${title}",
-                                "headerAttributionImage": "${logo}",
-                                "grow": 1
-                            },
-                            {
-                                "type": "Text",
-                                "text": "${data.textContent.primaryText.text}",
-                                "style": "textStyleBody",
-                                "maxLines": 1
-                            },
-                            {
-                                "type": "Text",
-                                "text": "${data.textContent.secondaryText.text}",
-                                "style": "textStyleDetails"
-                            },
-                            {
-                                "type": "Text",
-                                "text": "${ordinal} | ${listLength}",
-                                "paddingBottom": "20dp",
-                                "color": "white",
-                                "spacing": "5dp"
-                            }
-                        ]
-                    }
+                        "type":"TouchWrapper",
+                        "onPress":{
+                        "type":"SendEvent",
+                        "arguments": ["Mode","${ordinal}","${data.textContent.primaryText.text}"]
+                        },
+                        "item":{
+
+                            "type": "Container",
+                            "height": "100vh",
+                            "width": "100vw",
+                            "alignItems": "center",
+                            "justifyContent": "end",
+                            "items": [
+                                {
+                                    "type": "Image",
+                                    "position": "absolute",
+                                    "height": "100vh",
+                                    "width": "100vw",
+                                    "overlayColor": "rgba(0, 0, 0, 0.6)",
+                                    "source": "${data.image.sources[0].url}",
+                                    "scale": "best-fill"
+                                },
+                                {
+                                    "type": "AlexaHeader",
+                                    "headerTitle": "${title}",
+                                    "headerAttributionImage": "${logo}",
+                                    "grow": 1
+                                },
+                                {
+                                    "type": "Text",
+                                    "text": "${data.textContent.primaryText.text}",
+                                    "style": "textStyleBody",
+                                    "maxLines": 1
+                                },
+                                {
+                                    "type": "Text",
+                                    "text": "${data.textContent.secondaryText.text}",
+                                    "style": "textStyleDetails"
+                                },
+                                {
+                                    "type": "Text",
+                                    "text": "${ordinal} | ${listLength}",
+                                    "paddingBottom": "20dp",
+                                    "color": "white",
+                                    "spacing": "5dp"
+                                }
+                            ]
+                        }}
                 ]
             },
             "HorizontalListItem": {
                 "item": [
                     {
-                        "type": "Container",
+                        "type":"TouchWrapper",
+						"onPress":{
+						"type":"SendEvent",
+						"arguments": [
+							"Mode",
+							"${ordinal}",
+							"${data.textContent.primaryText.text}"
+							]
+						},
+						"item":
+                    {"type": "Container",
                         "maxWidth": 528,
                         "minWidth": 160,
                         "paddingTop": 100,
@@ -218,7 +235,7 @@
                                 "style": "textStyleDetails",
                                 "spacing": 4
                             }
-                        ]
+                        ]}
                     }
                 ]
             },

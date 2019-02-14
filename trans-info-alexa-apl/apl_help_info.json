@@ -151,6 +151,7 @@
                                     "alignItems": "center",
                                     "paddingLeft": "70dp",
                                     "paddingRight": "70dp",
+                                    "paddingBottom": "50dp",
                                     "items": [
                                         {
                                             "type": "AlexaHeader",
@@ -181,6 +182,13 @@
                                         {
                                             "type": "Text",
                                             "text": "${payload.bodyTemplate2Data.textContent.subtitle4.text}",
+                                            "style": "textStylePrimary",
+                                            "width": "70vw",
+                                            "textAlign": "center"
+                                        },
+                                        {
+                                            "type": "Text",
+                                            "text": "${payload.bodyTemplate2Data.textContent.subtitle5.text}",
                                             "style": "textStylePrimary",
                                             "width": "70vw",
                                             "textAlign": "center"
@@ -270,6 +278,11 @@
                                                 },
                                                 {
                                                     "type": "Text",
+                                                    "text": "${payload.bodyTemplate2Data.textContent.subtitle5.text}",
+                                                    "style": "textStylePrimary"
+                                                },
+                                                {
+                                                    "type": "Text",
                                                     "text": "${payload.bodyTemplate2Data.textContent.primaryText.text}",
                                                     "spacing": "@spacingSmall",
                                                     "paddingTop": "40dp",
@@ -343,10 +356,6 @@
                     "type": "PlainText",
                     "text": "To get routes ask   <i> \"get routes\", \n</i>"
                 },
-                "subtitle4": {
-                    "type": "PlainText",
-                    "text": "To get stops ask   <i> \"get train stops\", </i>"
-                },
                 "subtitle2": {
                     "type": "PlainText",
                     "text": "To get departures you may ask   <i> \"get departures\", </i>"
@@ -354,6 +363,14 @@
                 "subtitle3": {
                     "type": "PlainText",
                     "text": "To get stop information ask   <i> \"get stop info\", </i>"
+                },
+                "subtitle4": {
+                    "type": "PlainText",
+                    "text": "To get nearby stops ask   <i> \"search nearby stops\", </i>"
+                },
+                "subtitle5": {
+                    "type": "PlainText",
+                    "text": "To get stops ask   <i> \"get train stops\", </i>"
                 },
                 "primaryText": {
                     "type": "PlainText",

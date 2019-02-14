@@ -7,15 +7,16 @@ from  urllib.parse import urlencode
 BASE_URL = 'http://timetableapi.ptv.vic.gov.au'
 devid  = 3000956
 KEY = 'fc6ed54a-7866-4a71-95a2-b10d3e48777b'
+TABLE_NAME_DB = 'victoria-trans-info'
 bkey = bytearray(KEY, 'utf-8')
 # route_types (array of integer) is required
 api_get_routes = '/v3/routes'
 # route id (integer) is required
 api_get_route_info = '/v3/routes/{0}?'
-# No parmaeter
+# No parameter
 api_get_route_types = '/v3/route_types'
 
-#GET /v3/stops/route/{route_id}/route_type/{route_type}
+# GET /v3/stops/route/{route_id}/route_type/{route_type}
 api_get_stops_on_route = '/v3/stops/route/{0}/route_type/{1}'
 
 
@@ -26,6 +27,7 @@ def getUrl(request):
     hashed = hmac.new(bkey, raw.encode('utf-8'), sha1)
     signature = hashed.hexdigest()
     return BASE_URL + raw + '&signature={1}'.format(devid, signature)
+
 
 def get_all_sotps_of_route(route_type, route_id):
     api_query = '/v3/stops/route/{0}/route_type/{1}'.format(route_id, route_type)
@@ -39,12 +41,8 @@ def get_all_sotps_of_route(route_type, route_id):
     else:
         print('response code = {0} , problem in getting stop for the route'.format(response.status_code))
         return None
-#param = urlencode({'route_types':[3]})
-#response = requests.get(getUrl('/v3/routes?' + param ))
 
-#response = requests.get(getUrl('/v3/routes' ))
-#response = requests.get('http://timetableapi.ptv.vic.gov.au/v3/routes?devid=3000956&signature=D1567E907B2147F84EC62BC8D79E7EBE3795EB83')
-#status_code = response.status_code
+
 def get_all_stops_of_route(route_type, route_id):
     api_query = '/v3/stops/route/{0}/route_type/{1}'.format(route_id, route_type)
     print('query for get_all_stops_of_route = {0}'.format(api_query))
@@ -75,7 +73,6 @@ def get_line_names():
         return None
 
 
-
 def save_all_routes_dynamodb():
     try:
         response = requests.get(getUrl('/v3/routes')).json()['routes']
@@ -93,7 +90,7 @@ def save_all_routes_dynamodb():
     except:
         print("Source:save_all_routes_dynamodb, Error while saving data from DynamoDB")
 
-TABLE_NAME_DB = 'victoria-trans-info'
+
 """
 Read data_value from dynamoDB
 """
@@ -114,16 +111,20 @@ def get_item_from_dynamodb(key_name):
         print("Source:get_all_routes_from_dynamodb, Error while reading data from DynamoDB")
         return None
 
-
-
-
-
-response = requests.get(getUrl('/v3/routes')).json()['routes']
-all_routes = dict()
-all_routes['all_routes']=response
-with open('all_routes_list.json', 'w') as outfile:
-    json.dump(all_routes, outfile)
-
+def get_url_encode_manually(input:str):
+    input = input.replace(" ", "%20")
+    input = input.replace("#", "%23")
+    input = input.replace("-", "%2D")
+    input = input.replace("&", "%26")
+    input = input.replace("!", "%21")
+    input = input.replace("'", "%27")
+    input = input.replace("(", "%28")
+    input = input.replace(")", "%29")
+    input = input.replace("+", "%2B")
+    input = input.replace("-", "%2D")
+    input = input.replace(".", "%2E")
+    input = input.replace("/", "%2F")
+    return input
 
 def get_all_routes(route_type:int):
     routes = list()
@@ -142,15 +143,7 @@ def get_all_routes(route_type:int):
         print('Source: get_all_routes, error while getting all routes:')
     return routes
 
-stop_name_id_pair = get_all_sotps_of_route(2,954)
-data = dict()
-data["route_type"] = 2
-data["route_id"] = 954
-#data["route_stops"] = [{v:k } for k, v in stop_name_id_pair.items()]
-data["route_stops"] =  stop_name_id_pair
 
-#with open('route_stops.json', 'w') as outfile:
-#    json.dump(data, outfile)
 
 import  boto3
 # rts = None
@@ -185,7 +178,21 @@ import  boto3
 
 #route_stops = get_item_from_dynamodb('route_stops')['route_stops']
 # -37.824170, 145.060789
+route_type = 2
+import  re
+search_term = 'Collinson St/Fullarton Rd '
+search_term = re.sub('[^A-Za-z0-9]+', ' ', search_term)
+search_term = search_term.strip(' ').split(' ')[0]
 
-rq = '/v3/stops/location/{0},{1}'.format(-37.824170, 145.060789)
-response = requests.get(getUrl(rq ))
+#search_term = search_term.replace(" ", '%20')
+#param_query = '/v3/search/{0}?route_types={1}&include_addresses=false&include_outlets=false&match_route_by_suburb=false&match_stop_by_gtfs_stop_id=false'.format(
+#    search_term , route_type)
+#res = requests.get(getUrl(param_query))
+address = 'C-104, Renaissance Prospero,BYatarayanapura, Bangalore 560092,India'
+param = urlencode({'address': address, 'key': 'AIzaSyDKfFQStruF8z9wuvuTiv_74OL-vaC0cIU'})
+#query = 'https://maps.googleapis.com/maps/api/geocode/json?' + param
+response = requests.get('https://maps.googleapis.com/maps/api/geocode/json?', param).json()
 print(response)
+lat_long = [-37.824170, 145.060789]
+response = requests.get(getUrl('/v3/stops/location/{0},{1}'.format(lat_long[0], lat_long[1])))
+print(response.json())

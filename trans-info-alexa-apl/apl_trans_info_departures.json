@@ -130,6 +130,7 @@
                     "direction": "column",
                     "width": "100vw",
                     "height": "100vh",
+                    "paddingBottom": "150dp",
                     "items": [
                         {
                             "type": "Image",
@@ -149,8 +150,9 @@
                                     "type": "Container",
                                     "direction": "column",
                                     "alignItems": "center",
-                                    "paddingLeft": "70dp",
-                                    "paddingRight": "70dp",
+                                    "paddingLeft": "20dp",
+                                    "paddingRight": "20dp",
+                                    "paddingBottom": "100dp",
                                     "items": [
                                         {
                                             "type": "AlexaHeader",
@@ -173,12 +175,46 @@
                                         },
                                         {
                                             "type": "Text",
-                                            "text": "${payload.bodyTemplate2Data.textContent.primaryText.text}",
+                                            "text": "${payload.bodyTemplate2Data.textContent.primaryText1.text}",
+                                            "paddingTop": 20,
+                                            "style": "textStylePrimary",
+                                            "width": "70vw",
+                                            "textAlign": "center"
+                                        },
+                                        {
+                                            "type": "Text",
+                                            "text": "${payload.bodyTemplate2Data.textContent.primaryText2.text}",
+                                            "paddingTop": 20,
+                                            "style": "textStylePrimary",
+                                            "width": "70vw",
+                                            "textAlign": "center"
+                                        },
+                                        {
+                                            "type": "Text",
+                                            "text": "${payload.bodyTemplate2Data.textContent.primaryText3.text}",
                                             "paddingTop": 20,
                                             "style": "textStylePrimary",
                                             "width": "70vw",
                                             "textAlign": "center"
                                         }
+                                        ,{
+                                            "type": "Text",
+                                            "text": "${payload.bodyTemplate2Data.textContent.primaryText4.text}",
+                                            "paddingTop": 20,
+                                            "style": "textStylePrimary",
+                                            "width": "70vw",
+                                            "textAlign": "center"
+                                        },
+                                        {
+                                            "type": "Text",
+                                            "text": "${payload.bodyTemplate2Data.textContent.primaryText5.text}",
+                                            "paddingTop": 20,
+                                            "paddingTop": 50,
+                                            "style": "textStylePrimary",
+                                            "width": "70vw",
+                                            "textAlign": "center"
+                                        }
+
                                     ]
                                 }
                             ]
@@ -208,7 +244,7 @@
                             "direction": "row",
                             "paddingLeft": "60dp",
                             "paddingRight": "72dp",
-                            "paddingBottom": "100dp",
+                            "paddingBottom": "30dp",
                             "grow": 1,
                             "shrink": 1,
                             "height": "100vh",
@@ -250,12 +286,45 @@
                                                 },
                                                 {
                                                     "type": "Text",
-                                                    "text": "${payload.bodyTemplate2Data.textContent.primaryText.text}",
+                                                    "text": "${payload.bodyTemplate2Data.textContent.primaryText1.text}",
+                                                    "spacing": "@spacingSmall",
+                                                    "paddingTop": "40dp",
+                                                    "paddingRight": "70dp",
+                                                    "style": "textStylePrimary"
+                                                },
+                                                {
+                                                    "type": "Text",
+                                                    "text": "${payload.bodyTemplate2Data.textContent.primaryText2.text}",
+                                                    "spacing": "@spacingSmall",
+                                                    "paddingTop": "40dp",
+                                                    "paddingRight": "70dp",
+                                                    "style": "textStylePrimary"
+                                                },
+                                                {
+                                                    "type": "Text",
+                                                    "text": "${payload.bodyTemplate2Data.textContent.primaryText3.text}",
+                                                    "spacing": "@spacingSmall",
+                                                    "paddingTop": "40dp",
+                                                    "paddingRight": "70dp",
+                                                    "style": "textStylePrimary"
+                                                },
+                                                {
+                                                    "type": "Text",
+                                                    "text": "${payload.bodyTemplate2Data.textContent.primaryText4.text}",
+                                                    "spacing": "@spacingSmall",
+                                                    "paddingTop": "40dp",
+                                                    "paddingRight": "70dp",
+                                                    "style": "textStylePrimary"
+                                                },
+                                                {
+                                                    "type": "Text",
+                                                    "text": "${payload.bodyTemplate2Data.textContent.primaryText5.text}",
                                                     "spacing": "@spacingSmall",
                                                     "paddingTop": "40dp",
                                                     "paddingRight": "70dp",
                                                     "style": "textStylePrimary"
                                                 }
+
                                             ]
                                         }
                                     ]
@@ -323,10 +392,27 @@
                     "type": "PlainText",
                     "text": ""
                 },
-                "primaryText": {
+                "primaryText1": {
+                    "type": "PlainText",
+                    "text": ""
+                },
+                "primaryText2": {
+                    "type": "PlainText",
+                    "text": ""
+                },
+                "primaryText3": {
+                    "type": "PlainText",
+                    "text": ""
+                },
+                "primaryText4": {
+                    "type": "PlainText",
+                    "text": ""
+                },
+                "primaryText5": {
                     "type": "PlainText",
                     "text": ""
                 }
+
             },
             "logoUrl": "https://s3.amazonaws.com/aws-apl-contest/transInfo/logo/web_hi_res_512.png",
             "hintText": "Try, \"Alexa, find train departures\""
