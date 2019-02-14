@@ -1,0 +1,14 @@
+Alexa skill “Victoria trans info” provides various information about routes, stops, departures and nearby stops for Public Transport Victoria (PTV) (https://www.ptv.vic.gov.au/) , Australia. Main objective of the skill is to get latest and up to date information using public API provided by the PTV for the developers. All the information is taken is using the API and it is used for developing the Alexa skill and not to be used for commercial purpose.
+Alexa Skill has been developed by (c)Saleem Javed for EI Labs.
+Please note that:
+For a feature to find nearby stops of transport, this skill shall request for the device address saved in the Alexa device by the user, only after the consent of the user.
+User can deny the permission to the skill any time the address will not be accessed by the skill.
+The address is not saved by the skill anywhere in the skill or any other database storage.
+The address of the user's device is not used for any other purpose
+The address of the user's device is not shared to any other party or any other software application
+This skill is developed for hackathon and not used in any other commercial application.
+In case there is any discrepency found user may write immediately to sj112233@gmail.com for any clarification
+User can revoke the permission any time while using the skill.
+(c) saleem javed . All rights reserved.
+
+
