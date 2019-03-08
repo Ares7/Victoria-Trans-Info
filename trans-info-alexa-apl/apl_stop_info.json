@@ -177,6 +177,7 @@
                                             "paddingTop": 20,
                                             "style": "textStylePrimary",
                                             "width": "70vw",
+                                            "paddingBottom": "100dp",
                                             "textAlign": "center"
                                         }
                                     ]

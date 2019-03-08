@@ -151,7 +151,7 @@
                                     "alignItems": "center",
                                     "paddingLeft": "70dp",
                                     "paddingRight": "70dp",
-                                    "paddingBottom": "50dp",
+                                    "paddingBottom": "80dp",
                                     "items": [
                                         {
                                             "type": "AlexaHeader",

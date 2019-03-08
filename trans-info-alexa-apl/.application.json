@@ -1,0 +1,10 @@
+{
+    "DeploymentMethod": "lambda",
+    "Functions": {
+        "trans-info-alexa": {
+            "PhysicalId": {
+                "us-east-1": "trans-info-alexa"
+            }
+        }
+    }
+}

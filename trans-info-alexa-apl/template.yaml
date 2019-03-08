@@ -1,0 +1,19 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+Description: An AWS Serverless Specification template describing your function.
+Resources:
+  trans-info-alexa:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      Description: ''
+      Handler: trans-info-alexa-apl.handler
+      MemorySize: 128
+      Role: 'arn:aws:iam::647087826666:role/lambda_trans-info-alexa'
+      Runtime: python3.6
+      Timeout: 30
+      Environment:
+        Variables:
+          GEO_LOCATION_API_KEY: 'AIzaSyDKfFQStruF8z9wuvuTiv_74OL-vaC0cIU'
+          PTV_API_KEY: 'fc6ed54a-7866-4a71-95a2-b10d3e48777b'
+          PTV_DEV_ID: '3000956'
+          
